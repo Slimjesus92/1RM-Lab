@@ -76,8 +76,9 @@ class MainActivity : Activity() {
         }
         if (sets.isEmpty()) { result.text = "Add a set to estimate your 1RM"; return }
         val estimate = OneRmEngine.session(sets)
-        val label = String.format(Locale.UK, "%.1f kg", estimate.oneRmKg)
-        result.text = "Session 1RM (median of ${estimate.setsUsed} sets): $label\nSet disagreement: ${String.format(Locale.UK, "%.1f", estimate.spreadKg)} kg"
+        val strongest = sets.maxOf { OneRmEngine.estimate(it).combinedKg }
+        val label = String.format(Locale.UK, "%.1f kg", strongest)
+        result.text = "Strongest estimated 1RM: $label\nSession median: ${String.format(Locale.UK, "%.1f", estimate.oneRmKg)} kg (${estimate.setsUsed} sets)\nSet disagreement: ${String.format(Locale.UK, "%.1f", estimate.spreadKg)} kg"
         getSharedPreferences("last_estimate", MODE_PRIVATE).edit().putString("label", "${exercise.selectedItem}: $label").apply()
         val manager = AppWidgetManager.getInstance(this)
         val component = ComponentName(this, OneRmWidget::class.java)
