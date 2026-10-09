@@ -91,10 +91,18 @@ class MainActivity : Activity() {
             records.optJSONObject(i)?.takeIf { it.optString("exercise") == selected }?.optDouble("value")
         }
         history.text = if (values.isEmpty()) "No saved sessions for this exercise yet."
-            else "Personal best: " + String.format(Locale.UK, "%.1f kg", values.maxOrNull()) +
-                "\\nLatest: " + String.format(Locale.UK, "%.1f kg", values.last()) +
-                "\\nProgress since first: " + String.format(Locale.UK, "%+.1f kg", values.last() - values.first()) +
-                "\\nSaved sessions: " + values.size
+            else {
+                val best = values.maxOrNull() ?: 0.0
+                val trend = values.takeLast(10).joinToString("  ") { value ->
+                    val level = if (best <= 0.0) 0 else ((value / best) * 7).toInt().coerceIn(0, 7)
+                    "▁▂▃▄▅▆▇█"[level].toString()
+                }
+                "PERSONAL BEST  " + String.format(Locale.UK, "%.1f kg", best) +
+                    "\\nLatest  " + String.format(Locale.UK, "%.1f kg", values.last()) +
+                    "\\nChange  " + String.format(Locale.UK, "%+.1f kg", values.last() - values.first()) +
+                    "\\nSaved sessions  " + values.size +
+                    "\\nRecent progression  " + trend
+            }
     }
     private fun edit(hintText: String, decimal: Boolean) = EditText(this).apply {
         hint = hintText
