@@ -67,7 +67,7 @@ class MainActivity : Activity() {
         sets.forEachIndexed { index, set ->
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             val description = TextView(this).apply {
-                text = "${index + 1}. ${set.weightKg} kg × ${set.reps} · RIR ${set.rir?.toString() ?: "unknown"}"
+                text = "${index + 1}. ${set.weightKg} kg × ${set.reps} · RIR ${set.rir?.toString() ?: "unknown"}\nSet 1RM: ${String.format(Locale.UK, "%.1f", OneRmEngine.estimate(set).combinedKg)} kg"
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
             line.addView(description)
@@ -77,7 +77,7 @@ class MainActivity : Activity() {
         if (sets.isEmpty()) { result.text = "Add a set to estimate your 1RM"; return }
         val estimate = OneRmEngine.session(sets)
         val label = String.format(Locale.UK, "%.1f kg", estimate.oneRmKg)
-        result.text = "Estimated 1RM: $label\nSet disagreement: ${String.format(Locale.UK, "%.1f", estimate.spreadKg)} kg"
+        result.text = "Session 1RM (median of ${estimate.setsUsed} sets): $label\nSet disagreement: ${String.format(Locale.UK, "%.1f", estimate.spreadKg)} kg"
         getSharedPreferences("last_estimate", MODE_PRIVATE).edit().putString("label", "${exercise.selectedItem}: $label").apply()
         val manager = AppWidgetManager.getInstance(this)
         val component = ComponentName(this, OneRmWidget::class.java)
