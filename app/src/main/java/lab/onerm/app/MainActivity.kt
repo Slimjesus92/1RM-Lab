@@ -10,12 +10,15 @@ import android.widget.*
 import lab.onerm.LiftSet
 import lab.onerm.OneRmEngine
 import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : Activity() {
     private val sets = mutableListOf<LiftSet>()
     private lateinit var rows: LinearLayout
     private lateinit var result: TextView
     private lateinit var exercise: Spinner
+    private lateinit var history: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +44,28 @@ class MainActivity : Activity() {
         root.addView(rows)
         result = TextView(this).apply { text = "Add a set to estimate your 1RM"; textSize = 22f; setPadding(0, 18, 0, 18) }
         root.addView(result)
+        root.addView(Button(this).apply {
+            text = "Save session"
+            setOnClickListener {
+                if (sets.isEmpty()) { Toast.makeText(this@MainActivity, "Add a set first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
+                val prefs = getSharedPreferences("strength_history", MODE_PRIVATE)
+                val records = JSONArray(prefs.getString("records", "[]"))
+                records.put(JSONObject().put("exercise", exercise.selectedItem.toString())
+                    .put("value", sets.maxOf { OneRmEngine.estimate(it).combinedKg })
+                    .put("date", System.currentTimeMillis()))
+                prefs.edit().putString("records", records.toString()).apply()
+                showHistory()
+            }
+        })
+        history = TextView(this).apply { textSize = 17f; setPadding(0, 24, 0, 16) }
+        root.addView(history)
+        exercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                sets.clear(); refresh(); showHistory()
+            }
+        }
+        showHistory()
         root.addView(TextView(this).apply { text = "Estimates are not measured 1RMs. Unknown RIR is provisionally treated as 0 for calculation, and should not be interpreted as confirmed failure. Set spread is not a statistical confidence interval." })
         add.setOnClickListener {
             try {
@@ -56,6 +81,20 @@ class MainActivity : Activity() {
             }
         }
         root.addView(Button(this).apply { text = "Clear session"; setOnClickListener { sets.clear(); refresh() } })
+    }
+    private fun showHistory() {
+        if (!::history.isInitialized) return
+        val prefs = getSharedPreferences("strength_history", MODE_PRIVATE)
+        val records = JSONArray(prefs.getString("records", "[]"))
+        val selected = exercise.selectedItem?.toString() ?: return
+        val values = (0 until records.length()).mapNotNull { i ->
+            records.optJSONObject(i)?.takeIf { it.optString("exercise") == selected }?.optDouble("value")
+        }
+        history.text = if (values.isEmpty()) "No saved sessions for this exercise yet."
+            else "Personal best: " + String.format(Locale.UK, "%.1f kg", values.maxOrNull()) +
+                "\\nLatest: " + String.format(Locale.UK, "%.1f kg", values.last()) +
+                "\\nProgress since first: " + String.format(Locale.UK, "%+.1f kg", values.last() - values.first()) +
+                "\\nSaved sessions: " + values.size
     }
     private fun edit(hintText: String, decimal: Boolean) = EditText(this).apply {
         hint = hintText
