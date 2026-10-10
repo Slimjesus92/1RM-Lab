@@ -4,6 +4,8 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.os.Bundle
+import android.graphics.Color
+import android.view.View
 import android.text.InputType
 import android.view.ViewGroup
 import android.widget.*
@@ -21,14 +23,41 @@ class MainActivity : Activity() {
     private lateinit var history: TextView
     private lateinit var chart: ProgressChart
     private lateinit var widgetExercise: Spinner
+    private lateinit var rootView: LinearLayout
+    private var darkMode = true
+    private fun applyTheme(view: View) {
+        val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
+        val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
+        when (view) {
+            is Button -> {
+                view.setTextColor(if (darkMode) Color.BLACK else Color.WHITE)
+                view.backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
+            }
+            is EditText -> {
+                view.setTextColor(foreground)
+                view.setHintTextColor(if (darkMode) Color.LTGRAY else Color.GRAY)
+                view.backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
+            }
+            is TextView -> view.setTextColor(foreground)
+        }
+        if (view is ViewGroup) for (i in 0 until view.childCount) applyTheme(view.getChildAt(i))
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        darkMode = getSharedPreferences("ui_settings", MODE_PRIVATE)
+            .getString("theme", "Dark / Performance") != "Light / Scientific"
+        window.statusBarColor = if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252)
+        window.navigationBarColor = window.statusBarColor
+        window.decorView.systemUiVisibility = if (darkMode) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 36, 28, 20)
+            setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252))
         }
-        val scroll = ScrollView(this).apply { addView(root) }
+        rootView = root
+        val scroll = ScrollView(this).apply { addView(root); setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252)) }
         setContentView(scroll)
         root.addView(TextView(this).apply { text = "1RM LAB"; textSize = 28f })
         root.addView(TextView(this).apply { text = "Research-informed strength estimates • kg"; textSize = 14f })
@@ -109,6 +138,26 @@ class MainActivity : Activity() {
             }
         }
         root.addView(Button(this).apply { text = "Clear session"; setOnClickListener { sets.clear(); refresh() } })
+        root.addView(TextView(this).apply { text = "APPEARANCE"; textSize = 20f; setPadding(0, 28, 0, 8) })
+        val themes = listOf("Dark / Performance", "Light / Scientific")
+        val themeSpinner = Spinner(this)
+        themeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, themes)
+        root.addView(themeSpinner)
+        themeSpinner.setSelection(if (darkMode) 0 else 1)
+        themeSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val chosen = themes[position]
+                val prefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
+                if (prefs.getString("theme", "Dark / Performance") != chosen) {
+                    prefs.edit().putString("theme", chosen).apply()
+                    recreate()
+                }
+            }
+        }
+        root.addView(TextView(this).apply { text = "1RM Lab v0.5 · Theme choice is saved automatically." })
+        applyTheme(root)
+        chart.darkMode = darkMode
     }
     private fun records(): JSONArray {
         val raw = getSharedPreferences("strength_history", MODE_PRIVATE).getString("records", "[]") ?: "[]"
