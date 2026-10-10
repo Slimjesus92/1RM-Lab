@@ -258,6 +258,13 @@ class MainActivity : Activity() {
         val picker = Spinner(this)
         picker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, exerciseNames)
         section.addView(picker)
+        section.addView(TextView(this).apply { text = "Strength baseline"; textSize = 15f })
+        val baselinePicker = Spinner(this)
+        val baselineOptions = listOf("All-time estimated PB", "Recent estimate (last 30 days)")
+        baselinePicker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, baselineOptions)
+        section.addView(baselinePicker)
+        val baselinePrefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
+        baselinePicker.setSelection(if (baselinePrefs.getString("training_baseline", "best") == "recent") 1 else 0)
         val percentage = SeekBar(this).apply { max = 90; progress = 65 }
         section.addView(percentage)
         val output = TextView(this).apply { textSize = 18f; setPadding(0, dp(8), 0, dp(12)) }
@@ -266,23 +273,35 @@ class MainActivity : Activity() {
         section.addView(table)
         val calculate = {
             val name = exerciseNames[picker.selectedItemPosition.coerceIn(0, exerciseNames.lastIndex)]
-            val all = records()
-            val values = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+            val now = System.currentTimeMillis()
+            val entries = (0 until records().length()).mapNotNull { records().optJSONObject(it) }
                 .filter { it.optString("exercise") == name && it.optString("type", "estimated") != "actual" }
-                .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
-            val best = values.maxOrNull()
+                .mapNotNull { entry ->
+                    val value = entry.optDouble("value")
+                    val date = entry.optLong("date", -1L)
+                    if (value.isFinite() && value > 0.0 && date > 0L && date <= now)
+                        Pair(date, value) else null
+                }
+            val recent = baselinePicker.selectedItemPosition == 1
+            val chosen = if (recent) entries.filter { it.first >= now - 30L * 86400000L }
+                .maxByOrNull { it.first } else entries.maxByOrNull { it.second }
             val percent = percentage.progress + 10
-            if (best == null) {
-                output.text = "$percent% — save an estimate first"
-                table.text = ""
+            if (chosen == null) {
+                output.text = if (recent) "No estimated 1RM saved in the last 30 days" else "$percent% — save an estimate first"
+                table.text = if (recent) "Switch to All-time estimated PB or log a new estimate." else ""
             } else {
-                fun load(pct: Int): Double = kotlin.math.round(best * pct / 100.0 * 2.0) / 2.0
-                output.text = "$percent% of estimated PB = " + String.format(Locale.UK, "%.1f kg", load(percent))
+                val base = chosen.second
+                fun load(pct: Int): Double = kotlin.math.round(base * pct / 100.0 * 2.0) / 2.0
+                output.text = "$percent% of " + String.format(Locale.UK, "%.1f kg", base) +
+                    " = " + String.format(Locale.UK, "%.1f kg", load(percent))
+                val dateLabel = java.text.SimpleDateFormat("dd MMM yyyy", Locale.UK)
+                    .format(java.util.Date(chosen.first))
                 val presets = listOf(70, 75, 80, 85, 90)
-                table.text = "QUICK LOADS (rounded to 0.5 kg)\\n" +
+                table.text = (if (recent) "Recent estimate" else "All-time estimated PB") +
+                    " · $dateLabel\n\nQUICK LOADS (rounded to 0.5 kg)\n" +
                     presets.joinToString("    ") { pct ->
                         "$pct%: " + String.format(Locale.UK, "%.1f kg", load(pct))
-                    } + "\\nBased on your best saved estimated 1RM; not a prescribed workout."
+                    } + "\nReference loads only; not a prescribed workout."
             }
         }
         percentage.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -293,6 +312,13 @@ class MainActivity : Activity() {
         picker.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) { calculate() }
+        }
+        baselinePicker.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                baselinePrefs.edit().putString("training_baseline", if (position == 1) "recent" else "best").apply()
+                calculate()
+            }
         }
         refreshTrainingWeights = calculate
         calculate()
@@ -521,7 +547,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.4 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.5 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
