@@ -261,8 +261,11 @@ class MainActivity : Activity() {
         settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(dashboard); root.addView(calculator)
         root.addView(historyPage); root.addView(settingsPage)
-        dashboard.addView(title("Your strength"))
-        dashboard.addView(Button(this).apply { text = "Customise dashboard"; setOnClickListener { chooseLifts() } })
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+        header.addView(title("Your strength"), LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(Button(this).apply { text = "Edit"; isAllCaps = false; setOnClickListener { chooseLifts() } },
+            LinearLayout.LayoutParams(dp(80), dp(48)))
+        dashboard.addView(header)
         dashboardCards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(18), 0, 0) }
         dashboard.addView(dashboardCards)
         dashboard.addView(TextView(this).apply { text = "YOUR PROGRESSION"; textSize = 18f })
@@ -400,7 +403,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.9 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.10 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
