@@ -1,4 +1,4 @@
-name: Android debug APK
+name: Android signed release APK
 on:
   push:
     branches: [main]
