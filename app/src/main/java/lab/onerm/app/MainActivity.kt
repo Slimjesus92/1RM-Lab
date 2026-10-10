@@ -136,9 +136,53 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
+    private fun editBodyweight() {
+        val prefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
+        val field = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            hint = "Bodyweight in kg"
+            prefs.getString("bodyweight_kg", null)?.let { setText(it) }
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Bodyweight for strength milestones")
+            .setMessage("Used only to calculate lift-to-bodyweight ratios.")
+            .setView(field)
+            .setNegativeButton("Cancel", null)
+            .setNeutralButton("Clear") { _, _ ->
+                prefs.edit().remove("bodyweight_kg").apply()
+                renderDashboard()
+            }
+            .setPositiveButton("Save", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val kg = field.text.toString().toDoubleOrNull()
+                if (kg == null || !kg.isFinite() || kg < 20.0 || kg > 500.0) {
+                    field.error = "Enter a bodyweight from 20 to 500 kg"
+                } else {
+                    prefs.edit().putString("bodyweight_kg", kg.toString()).apply()
+                    dialog.dismiss()
+                    renderDashboard()
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun renderDashboard() {
         if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
         dashboardCards.removeAllViews()
+        dashboardCards.addView(Button(this).apply {
+            val current = getSharedPreferences("ui_settings", MODE_PRIVATE).getString("bodyweight_kg", null)
+            text = if (current == null) "Set bodyweight for milestones"
+                else "Bodyweight: $current kg · Edit"
+            setOnClickListener { editBodyweight() }
+        })
+        dashboardCards.addView(TextView(this).apply {
+            text = "Milestones compare estimated PB to bodyweight; they are personal markers, not population rankings."
+            textSize = 12f
+            setPadding(0, dp(5), 0, dp(12))
+            setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+        })
         val all = records()
         for (name in chosenLifts()) {
             val entries = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
@@ -169,6 +213,30 @@ class MainActivity : Activity() {
                 textSize = 12f
                 setTextColor(if (darkMode) Color.rgb(155, 210, 238) else Color.rgb(36, 101, 175))
             })
+            val bodyweight = getSharedPreferences("ui_settings", MODE_PRIVATE)
+                .getString("bodyweight_kg", null)?.toDoubleOrNull()
+                ?.takeIf { it.isFinite() && it > 0.0 }
+            val milestoneBest = estimated.maxOrNull()
+            if (bodyweight != null && milestoneBest != null) {
+                val ratio = milestoneBest / bodyweight
+                val thresholds = listOf(1.0, 1.25, 1.5, 2.0)
+                val achieved = thresholds.filter { ratio >= it }
+                val next = thresholds.firstOrNull { ratio < it }
+                box.addView(TextView(this).apply {
+                    text = String.format(Locale.UK, "Bodyweight strength: %.2f× BW", ratio) +
+                        if (next != null) String.format(Locale.UK, " · Next: %.2f× BW", next)
+                        else " · All listed milestones reached"
+                    textSize = 12f
+                    setTextColor(if (darkMode) Color.rgb(216, 169, 79) else Color.rgb(137, 94, 25))
+                })
+                box.addView(TextView(this).apply {
+                    text = "Milestones: " + thresholds.joinToString("  ") {
+                        (if (it in achieved) "✓ " else "○ ") + String.format(Locale.UK, "%.2f×", it)
+                    }
+                    textSize = 12f
+                    setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+                })
+            }
             val goal = getSharedPreferences("strength_goals", MODE_PRIVATE)
                 .getString(name, null)?.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 }
             val best = estimated.maxOrNull()
@@ -548,7 +616,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.5 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.7 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
