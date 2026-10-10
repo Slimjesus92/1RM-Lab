@@ -35,6 +35,12 @@ class MainActivity : Activity() {
     private lateinit var dashboardCards: LinearLayout
     private lateinit var dashboardChart: ProgressChart
     private lateinit var navButtons: List<Button>
+    private var historyDays = 0
+    private fun filteredPoints(points: List<ProgressChart.Point>): List<ProgressChart.Point> {
+        if (historyDays == 0) return points
+        val cutoff = System.currentTimeMillis() - historyDays.toLong() * 86400000L
+        return points.filter { it.timestamp >= cutoff }
+    }
     private lateinit var weightInput: EditText
     private lateinit var repsInput: EditText
     private lateinit var rirInput: EditText
@@ -281,6 +287,17 @@ class MainActivity : Activity() {
         val historyExercise = Spinner(this)
         historyExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
         historyPage.addView(historyExercise)
+        val dateFilter = Spinner(this)
+        dateFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf("All time", "Last 90 days", "Last 30 days"))
+        historyPage.addView(dateFilter)
+        dateFilter.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                historyDays = when (position) { 1 -> 90; 2 -> 30; else -> 0 }
+                showHistory()
+            }
+        }
         historyExercise.setSelection(0)
         historyExercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
@@ -383,7 +400,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.8 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.9 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
@@ -450,11 +467,11 @@ class MainActivity : Activity() {
             .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
         val actuals = matching.filter { it.optString("type") == "actual" }
             .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
-        chart.points = matching.filter { it.optString("type", "estimated") != "actual" }
+        chart.points = filteredPoints(matching.filter { it.optString("type", "estimated") != "actual" }
             .mapNotNull {
                 val value = it.optDouble("value")
                 if (value.isFinite() && value > 0) ProgressChart.Point(value, it.optLong("date", System.currentTimeMillis())) else null
-            }
+            })
         val format = { value: Double -> String.format(Locale.UK, "%.1f kg", value) }
         val estimateLabel = if (estimates.isEmpty()) "No estimated sessions saved"
             else "Estimated best: " + format(estimates.maxOrNull() ?: 0.0) +
