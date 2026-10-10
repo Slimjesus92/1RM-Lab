@@ -167,8 +167,8 @@ class MainActivity : Activity() {
         calculator.addView(TextView(this).apply { text = "1RM CALCULATOR"; textSize = 22f })
         historyPage.addView(TextView(this).apply { text = "TRAINING HISTORY"; textSize = 22f })
         settingsPage.addView(TextView(this).apply { text = "SETTINGS"; textSize = 22f })
-        root.addView(TextView(this).apply { text = "1RM LAB"; textSize = 28f })
-        root.addView(TextView(this).apply { text = "Research-informed strength estimates • kg"; textSize = 14f })
+
+
         exercise = Spinner(this)
         val names = exerciseNames
         exercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
@@ -280,6 +280,7 @@ class MainActivity : Activity() {
             .put("date", System.currentTimeMillis()).put("type", type))
         getSharedPreferences("strength_history", MODE_PRIVATE).edit().putString("records", all.toString()).apply()
         updateWidget()
+        renderDashboard()
     }
     private fun updateWidget() {
         val prefs = getSharedPreferences("last_estimate", MODE_PRIVATE)
