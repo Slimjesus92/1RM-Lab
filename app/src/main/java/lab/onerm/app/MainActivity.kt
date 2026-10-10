@@ -399,7 +399,7 @@ class MainActivity : Activity() {
                 })
                 box.addView(TextView(this).apply {
                     text = "Bodyweight-adjusted, " + reference + " reference · " +
-                        (if (sexPrefs.getString("strength_age", "")?.toIntOrNull() in 15..90) "Approximate age adjustment; " else "Adult baseline; ") +
+                        (if (sexPrefs.getString("strength_age", "")?.toIntOrNull()?.let { it in 15..90 } == true) "Approximate age adjustment; " else "Adult baseline; ") +
                         "Strength Level community tables. Estimates are not tested lifts."
                     textSize = 11f
                     setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
