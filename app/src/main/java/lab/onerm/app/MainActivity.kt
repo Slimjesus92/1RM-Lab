@@ -407,7 +407,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.10 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.11 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
@@ -485,10 +485,20 @@ class MainActivity : Activity() {
                 "\nLatest estimate: " + format(estimates.last()) +
                 "\nChange: " + String.format(Locale.UK, "%+.1f kg", estimates.last() - estimates.first()) +
                 "\nEstimated sessions: " + estimates.size
+        val recentChange = if (estimates.size < 2) "Previous session: not enough data" else {
+            val previous = estimates[estimates.lastIndex - 1]
+            val delta = estimates.last() - previous
+            "Vs previous estimated session: " + String.format(Locale.UK, "%+.1f kg (%+.1f%%)", delta, delta / previous * 100.0)
+        }
+        val testedChange = if (actuals.size < 2) "" else {
+            val previous = actuals[actuals.lastIndex - 1]
+            val delta = actuals.last() - previous
+            " · Vs previous tested lift: " + String.format(Locale.UK, "%+.1f kg (%+.1f%%)", delta, delta / previous * 100.0)
+        }
         val actualLabel = if (actuals.isEmpty()) "No tested 1RM saved"
             else "Tested 1RM personal best: " + format(actuals.maxOrNull() ?: 0.0)
         renderDashboard()
-        history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n\n$actualLabel\n\nEstimated 1RM progression:"
+        history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n$recentChange\n\n$actualLabel$testedChange\n\nEstimated 1RM progression:"
     }
 
 
