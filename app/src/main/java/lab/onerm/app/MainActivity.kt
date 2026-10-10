@@ -131,7 +131,11 @@ class MainActivity : Activity() {
                     "Tested PB: " + String.format(Locale.UK, "%.1f kg", tested.maxOrNull())
                 textSize = 12f; setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
             })
-            box.addView(TextView(this).apply { text = progressLabel(estimated); textSize = 12f; setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)) })
+            box.addView(TextView(this).apply {
+                text = strengthInsight(name, all)
+                textSize = 12f
+                setTextColor(if (darkMode) Color.rgb(155, 210, 238) else Color.rgb(36, 101, 175))
+            })
             box.setOnClickListener {
                 exercise.setSelection(exerciseNames.indexOf(name))
                 chartLift = name
@@ -148,6 +152,28 @@ class MainActivity : Activity() {
             }
     }
 
+
+    private fun strengthInsight(name: String, all: JSONArray): String {
+        val cutoff = System.currentTimeMillis() - 90L * 86400000L
+        val recent = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+            .filter { it.optString("exercise") == name && it.optString("type", "estimated") != "actual" }
+            .mapNotNull { entry ->
+                val value = entry.optDouble("value")
+                val date = entry.optLong("date")
+                if (value.isFinite() && value > 0 && date >= cutoff && date <= System.currentTimeMillis())
+                    Pair(date, value) else null
+            }.sortedBy { it.first }
+        if (recent.size < 4) return "Trend: Need 4 sessions in 90 days"
+        val early = recent.take(2).map { it.second }.average()
+        val late = recent.takeLast(2).map { it.second }.average()
+        val change = (late - early) / early * 100.0
+        val status = when {
+            change >= 2.0 -> "Improving"
+            change <= -2.0 -> "Declining"
+            else -> "Holding steady"
+        }
+        return "90-day trend: $status (" + String.format(Locale.UK, "%+.1f%%", change) + ")"
+    }
 
     private fun progressLabel(values: List<Double>): String {
         if (values.size < 2) return "Log another session to see progress"
