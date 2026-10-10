@@ -408,11 +408,21 @@ class MainActivity : Activity() {
     }
     private fun saveRecord(name: String, value: Double, type: String) {
         val all = records()
+        val previous = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+            .filter { it.optString("exercise") == name && it.optString("type", "estimated") == type }
+            .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }.maxOrNull()
         all.put(JSONObject().put("exercise", name).put("value", value)
             .put("date", System.currentTimeMillis()).put("type", type))
         getSharedPreferences("strength_history", MODE_PRIVATE).edit().putString("records", all.toString()).apply()
         updateWidget()
         renderDashboard()
+        if (previous == null || value > previous + 0.001) {
+            val gain = if (previous == null) "First recorded PB" else String.format(Locale.UK, "+%.1f kg", value - previous)
+            android.app.AlertDialog.Builder(this).setTitle("New personal best!")
+                .setMessage(name + " · " + (if (type == "actual") "Tested" else "Estimated") +
+                    " 1RM: " + String.format(Locale.UK, "%.1f kg", value) + " (" + gain + ")")
+                .setPositiveButton("Nice!", null).show()
+        }
     }
     private fun updateWidget() {
         val prefs = getSharedPreferences("last_estimate", MODE_PRIVATE)
