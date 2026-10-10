@@ -274,7 +274,8 @@ class MainActivity : Activity() {
         val calculate = {
             val name = exerciseNames[picker.selectedItemPosition.coerceIn(0, exerciseNames.lastIndex)]
             val now = System.currentTimeMillis()
-            val entries = (0 until records().length()).mapNotNull { records().optJSONObject(it) }
+            val all = records()
+            val entries = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
                 .filter { it.optString("exercise") == name && it.optString("type", "estimated") != "actual" }
                 .mapNotNull { entry ->
                     val value = entry.optDouble("value")
