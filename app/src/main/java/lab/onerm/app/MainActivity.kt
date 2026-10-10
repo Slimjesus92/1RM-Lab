@@ -5,6 +5,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.os.Bundle
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.Typeface
 import android.view.View
 import android.text.InputType
 import android.view.ViewGroup
@@ -34,6 +36,13 @@ class MainActivity : Activity() {
     private lateinit var dashboardChart: ProgressChart
     private lateinit var navButtons: List<Button>
     private val exerciseNames = listOf("Bench press", "Squat", "Deadlift", "Overhead press", "Barbell row", "Other")
+    private fun rounded(color: Int, radius: Int = 18) = GradientDrawable().apply {
+        setColor(color); cornerRadius = dp(radius).toFloat()
+    }
+    private fun title(label: String) = TextView(this).apply {
+        text = label; textSize = 24f; setTypeface(null, Typeface.BOLD)
+        setPadding(0, dp(8), 0, dp(20))
+    }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun showTab(index: Int) {
         listOf(dashboard, calculator, historyPage, settingsPage).forEachIndexed { i, page ->
@@ -55,7 +64,7 @@ class MainActivity : Activity() {
             val box = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(18), dp(16), dp(18), dp(16))
-                setBackgroundColor(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
+                background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
             }
             box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f })
             box.addView(TextView(this).apply {
@@ -113,7 +122,7 @@ class MainActivity : Activity() {
         window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(28, 36, 28, 20)
+            setPadding(dp(18), dp(20), dp(18), dp(24))
             setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252))
         }
         rootView = root
@@ -158,15 +167,15 @@ class MainActivity : Activity() {
         settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(dashboard); root.addView(calculator)
         root.addView(historyPage); root.addView(settingsPage)
-        dashboard.addView(TextView(this).apply { text = "STRENGTH DASHBOARD"; textSize = 24f })
+        dashboard.addView(title("Your strength"))
         dashboardCards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(18), 0, 0) }
         dashboard.addView(dashboardCards)
         dashboard.addView(TextView(this).apply { text = "YOUR PROGRESSION"; textSize = 18f })
         dashboardChart = ProgressChart(this).apply { darkMode = this@MainActivity.darkMode }
         dashboard.addView(dashboardChart)
-        calculator.addView(TextView(this).apply { text = "1RM CALCULATOR"; textSize = 22f })
-        historyPage.addView(TextView(this).apply { text = "TRAINING HISTORY"; textSize = 22f })
-        settingsPage.addView(TextView(this).apply { text = "SETTINGS"; textSize = 22f })
+        calculator.addView(title("1RM Calculator"))
+        historyPage.addView(title("Training history"))
+        settingsPage.addView(title("Settings"))
 
 
         exercise = Spinner(this)
@@ -278,6 +287,18 @@ class MainActivity : Activity() {
         }
         settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.6 · Theme choice is saved automatically." })
         applyTheme(root)
+        dashboardCards.let { container ->
+            for (i in 0 until container.childCount) {
+                val card = container.getChildAt(i)
+                if (card is ViewGroup) {
+                    for (j in 0 until card.childCount) {
+                        (card.getChildAt(j) as? TextView)?.let { label ->
+                            label.setTextColor(if (j == 1) (if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)) else if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+                        }
+                    }
+                }
+            }
+        }
         applyTheme(nav)
         renderDashboard()
         showTab(0)
