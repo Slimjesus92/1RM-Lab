@@ -510,7 +510,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.2 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.3 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
