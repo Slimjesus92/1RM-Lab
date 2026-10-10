@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private lateinit var repsInput: EditText
     private lateinit var rirInput: EditText
     private lateinit var historyExercisePicker: Spinner
+    private var refreshTrainingWeights: (() -> Unit)? = null
     private fun recallSet() {
         if (!::weightInput.isInitialized) return
         val name = exercise.selectedItem?.toString() ?: return
@@ -189,6 +190,7 @@ class MainActivity : Activity() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) { calculate() }
         }
+        refreshTrainingWeights = calculate
         calculate()
         return section
     }
@@ -415,7 +417,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.11 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.12 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
@@ -448,6 +450,7 @@ class MainActivity : Activity() {
         getSharedPreferences("strength_history", MODE_PRIVATE).edit().putString("records", all.toString()).apply()
         updateWidget()
         renderDashboard()
+        refreshTrainingWeights?.invoke()
         if (previous == null || value > previous + 0.001) {
             val gain = if (previous == null) "First recorded PB" else String.format(Locale.UK, "+%.1f kg", value - previous)
             android.app.AlertDialog.Builder(this).setTitle("New personal best!")
@@ -571,6 +574,7 @@ class MainActivity : Activity() {
         updateWidget()
         showHistory()
         renderDashboard()
+        refreshTrainingWeights?.invoke()
     }
     private fun recordEditor(index: Int) {
         val all = records()
