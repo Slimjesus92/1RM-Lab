@@ -35,6 +35,31 @@ class MainActivity : Activity() {
     private lateinit var dashboardCards: LinearLayout
     private lateinit var dashboardChart: ProgressChart
     private lateinit var navButtons: List<Button>
+
+    private var chartLift = "Bench press"
+    private fun chosenLifts(): List<String> {
+        val value = getSharedPreferences("ui_settings", MODE_PRIVATE)
+            .getString("dashboard_lifts", "Bench press|Squat|Deadlift") ?: ""
+        return value.split("|").filter { it in exerciseNames }.distinct().ifEmpty { listOf("Bench press") }
+    }
+    private fun chooseLifts() {
+        val chosen = chosenLifts().toMutableSet()
+        val flags = exerciseNames.map { it in chosen }.toBooleanArray()
+        android.app.AlertDialog.Builder(this).setTitle("Dashboard exercises")
+            .setMultiChoiceItems(exerciseNames.toTypedArray(), flags) { _, i, checked ->
+                if (checked) chosen.add(exerciseNames[i]) else chosen.remove(exerciseNames[i])
+            }
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                if (chosen.isEmpty()) {
+                    Toast.makeText(this, "Choose at least one exercise", Toast.LENGTH_SHORT).show()
+                } else {
+                    getSharedPreferences("ui_settings", MODE_PRIVATE).edit()
+                        .putString("dashboard_lifts", exerciseNames.filter { it in chosen }.joinToString("|")).apply()
+                    renderDashboard()
+                }
+            }.show()
+    }
     private val exerciseNames = listOf("Bench press", "Squat", "Deadlift", "Overhead press", "Barbell row", "Other")
     private fun rounded(color: Int, radius: Int = 18) = GradientDrawable().apply {
         setColor(color); cornerRadius = dp(radius).toFloat()
@@ -54,7 +79,7 @@ class MainActivity : Activity() {
         if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
         dashboardCards.removeAllViews()
         val all = records()
-        for (name in listOf("Bench press", "Squat", "Deadlift")) {
+        for (name in chosenLifts()) {
             val entries = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
                 .filter { it.optString("exercise") == name }
             val estimated = entries.filter { it.optString("type", "estimated") != "actual" }
@@ -80,11 +105,12 @@ class MainActivity : Activity() {
             })
             box.setOnClickListener {
                 exercise.setSelection(exerciseNames.indexOf(name))
-                showTab(2)
+                chartLift = name
+                renderDashboard()
             }
             dashboardCards.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
         }
-        val selected = exercise.selectedItem?.toString() ?: exerciseNames[0]
+        val selected = chartLift
         dashboardChart.points = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
             .filter { it.optString("exercise") == selected && it.optString("type", "estimated") != "actual" }
             .mapNotNull {
@@ -170,6 +196,7 @@ class MainActivity : Activity() {
         root.addView(dashboard); root.addView(calculator)
         root.addView(historyPage); root.addView(settingsPage)
         dashboard.addView(title("Your strength"))
+        dashboard.addView(Button(this).apply { text = "Customise dashboard"; setOnClickListener { chooseLifts() } })
         dashboardCards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(18), 0, 0) }
         dashboard.addView(dashboardCards)
         dashboard.addView(TextView(this).apply { text = "YOUR PROGRESSION"; textSize = 18f })
