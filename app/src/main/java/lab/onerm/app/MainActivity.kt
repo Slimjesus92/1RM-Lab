@@ -280,6 +280,9 @@ class MainActivity : Activity() {
         calculator.addView(trainingWeightTool())
         historyPage.addView(title("Training history"))
         settingsPage.addView(title("Settings"))
+        settingsPage.addView(TextView(this).apply { text = "DATA BACKUP"; textSize = 18f })
+        settingsPage.addView(Button(this).apply { text = "Export history"; setOnClickListener { exportHistory() } })
+        settingsPage.addView(Button(this).apply { text = "Import history"; setOnClickListener { importHistory() } })
 
 
         exercise = Spinner(this)
@@ -486,6 +489,23 @@ class MainActivity : Activity() {
             else "Tested 1RM personal best: " + format(actuals.maxOrNull() ?: 0.0)
         renderDashboard()
         history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n\n$actualLabel\n\nEstimated 1RM progression:"
+    }
+
+
+    private fun exportHistory() {
+        val intent = android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(android.content.Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(android.content.Intent.EXTRA_TITLE, "1rm-lab-history.json")
+        }
+        startActivityForResult(intent, 1101)
+    }
+    private fun importHistory() {
+        val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(android.content.Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        startActivityForResult(intent, 1102)
     }
 
     private fun persistRecords(all: JSONArray) {
