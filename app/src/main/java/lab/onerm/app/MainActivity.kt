@@ -209,25 +209,37 @@ class MainActivity : Activity() {
 
 
     private fun strengthInsight(name: String, all: JSONArray): String {
-        val cutoff = System.currentTimeMillis() - 90L * 86400000L
-        val recent = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+        val now = System.currentTimeMillis()
+        val dayMs = 86400000L
+        val days = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
             .filter { it.optString("exercise") == name && it.optString("type", "estimated") != "actual" }
             .mapNotNull { entry ->
                 val value = entry.optDouble("value")
-                val date = entry.optLong("date")
-                if (value.isFinite() && value > 0 && date >= cutoff && date <= System.currentTimeMillis())
-                    Pair(date, value) else null
-            }.sortedBy { it.first }
-        if (recent.size < 4) return "Trend: Need 4 sessions in 90 days"
-        val early = recent.take(2).map { it.second }.average()
-        val late = recent.takeLast(2).map { it.second }.average()
-        val change = (late - early) / early * 100.0
-        val status = when {
-            change >= 2.0 -> "Improving"
-            change <= -2.0 -> "Declining"
-            else -> "Holding steady"
+                val date = entry.optLong("date", -1L)
+                if (!value.isFinite() || value <= 0 || date <= 0 || date > now) null
+                else Pair(java.time.Instant.ofEpochMilli(date).atZone(java.time.ZoneId.systemDefault()).toLocalDate(), value)
+            }
+            .groupBy { it.first }
+            .map { (day, sessions) -> Pair(day, sessions.maxOf { it.second }) }
+            .sortedBy { it.first }
+        if (days.isEmpty()) return "Trend: Log estimates to start tracking"
+        fun trend(window: Long): String {
+            val cutoff = java.time.Instant.ofEpochMilli(now - window * dayMs)
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            val recent = days.filter { !it.first.isBefore(cutoff) }.map { it.second }
+            if (recent.size < 4) return "Need 4 training days"
+            val first = recent.take(2).average()
+            val last = recent.takeLast(2).average()
+            val delta = (last - first) / first * 100.0
+            val label = when {
+                delta >= 2.0 -> "Improving"
+                delta <= -2.0 -> "Declining"
+                else -> "Steady"
+            }
+            return label + " (" + String.format(Locale.UK, "%+.1f%%", delta) + ")"
         }
-        return "90-day trend: $status (" + String.format(Locale.UK, "%+.1f%%", change) + ")"
+        return "30-day: " + trend(30) + " · 90-day: " + trend(90) +
+            "\\nBased on best estimate per training day; 2-day averages, 2% threshold"
     }
 
     private fun progressLabel(values: List<Double>): String {
