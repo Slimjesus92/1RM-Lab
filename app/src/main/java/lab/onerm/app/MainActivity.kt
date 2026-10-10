@@ -262,16 +262,27 @@ class MainActivity : Activity() {
         section.addView(percentage)
         val output = TextView(this).apply { textSize = 18f; setPadding(0, dp(8), 0, dp(12)) }
         section.addView(output)
+        val table = TextView(this).apply { textSize = 15f; setPadding(0, dp(6), 0, dp(12)) }
+        section.addView(table)
         val calculate = {
-            val name = exerciseNames[picker.selectedItemPosition.coerceAtLeast(0)]
+            val name = exerciseNames[picker.selectedItemPosition.coerceIn(0, exerciseNames.lastIndex)]
             val all = records()
             val values = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
                 .filter { it.optString("exercise") == name && it.optString("type", "estimated") != "actual" }
                 .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
+            val best = values.maxOrNull()
             val percent = percentage.progress + 10
-            output.text = if (values.isEmpty()) "$percent% — save an estimate first" else {
-                val kg = kotlin.math.round(values.maxOrNull()!! * percent / 100.0 * 2.0) / 2.0
-                "$percent% of estimated PB = " + String.format(Locale.UK, "%.1f kg", kg)
+            if (best == null) {
+                output.text = "$percent% — save an estimate first"
+                table.text = ""
+            } else {
+                fun load(pct: Int): Double = kotlin.math.round(best * pct / 100.0 * 2.0) / 2.0
+                output.text = "$percent% of estimated PB = " + String.format(Locale.UK, "%.1f kg", load(percent))
+                val presets = listOf(70, 75, 80, 85, 90)
+                table.text = "QUICK LOADS (rounded to 0.5 kg)\\n" +
+                    presets.joinToString("    ") { pct ->
+                        "$pct%: " + String.format(Locale.UK, "%.1f kg", load(pct))
+                    } + "\\nBased on your best saved estimated 1RM; not a prescribed workout."
             }
         }
         percentage.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -510,7 +521,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.3 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.4 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
