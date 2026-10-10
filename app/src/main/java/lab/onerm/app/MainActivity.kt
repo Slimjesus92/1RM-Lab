@@ -63,13 +63,14 @@ class MainActivity : Activity() {
                 .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
             val box = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(18), dp(16), dp(18), dp(16))
-                background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
+                setPadding(dp(20), dp(20), dp(20), dp(20))
+                background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE, 22)
+                elevation = dp(3).toFloat()
             }
             box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f })
             box.addView(TextView(this).apply {
                 text = if (estimated.isEmpty()) "No estimate yet" else String.format(Locale.UK, "%.1f kg", estimated.maxOrNull())
-                textSize = 28f
+                textSize = 32f; setTypeface(null, Typeface.BOLD)
                 setTextColor(if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175))
             })
             box.addView(TextView(this).apply {
@@ -157,6 +158,7 @@ class MainActivity : Activity() {
         }
         frame.addView(nav)
         frame.setOnApplyWindowInsetsListener { _, insets ->
+            root.setPadding(dp(18), dp(20) + insets.systemWindowInsetTop, dp(18), dp(24))
             nav.setPadding(dp(4), dp(4), dp(4), dp(4) + insets.systemWindowInsetBottom)
             insets
         }
@@ -172,7 +174,12 @@ class MainActivity : Activity() {
         dashboard.addView(dashboardCards)
         dashboard.addView(TextView(this).apply { text = "YOUR PROGRESSION"; textSize = 18f })
         dashboardChart = ProgressChart(this).apply { darkMode = this@MainActivity.darkMode }
-        dashboard.addView(dashboardChart)
+        dashboard.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(12), dp(8), dp(8))
+            background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE, 22)
+            addView(dashboardChart)
+        })
         calculator.addView(title("1RM Calculator"))
         historyPage.addView(title("Training history"))
         settingsPage.addView(title("Settings"))
@@ -204,7 +211,7 @@ class MainActivity : Activity() {
         calculator.addView(rows)
         result = TextView(this).apply { text = "Add a set to estimate your 1RM"; textSize = 22f; setPadding(0, 18, 0, 18) }
         calculator.addView(result)
-        root.addView(Button(this).apply {
+        calculator.addView(Button(this).apply {
             text = "Save session"
             setOnClickListener {
                 if (sets.isEmpty()) { Toast.makeText(this@MainActivity, "Add a set first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
@@ -232,7 +239,7 @@ class MainActivity : Activity() {
         calculator.addView(TextView(this).apply { text = "ACTUAL 1RM (TESTED LIFT)"; textSize = 18f; setPadding(0, 18, 0, 0) })
         val actualWeight = edit("Weight lifted for 1 rep (kg)", true)
         calculator.addView(actualWeight)
-        root.addView(Button(this).apply {
+        calculator.addView(Button(this).apply {
             text = "Save actual 1RM"
             setOnClickListener {
                 val value = actualWeight.text.toString().toDoubleOrNull()
@@ -285,7 +292,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.6 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.6.2 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
