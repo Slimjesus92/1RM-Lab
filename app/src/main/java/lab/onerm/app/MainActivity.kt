@@ -224,6 +224,10 @@ class MainActivity : Activity() {
             "Bench press|female" to listOf(Pair(40.0, listOf(10.0, 19.0, 33.0, 49.0, 68.0)), Pair(50.0, listOf(14.0, 25.0, 40.0, 58.0, 79.0)), Pair(60.0, listOf(19.0, 31.0, 47.0, 66.0, 88.0)), Pair(70.0, listOf(22.0, 36.0, 53.0, 74.0, 96.0)), Pair(80.0, listOf(26.0, 40.0, 59.0, 80.0, 104.0)), Pair(85.0, listOf(28.0, 43.0, 61.0, 83.0, 107.0)), Pair(90.0, listOf(30.0, 45.0, 64.0, 86.0, 111.0)), Pair(100.0, listOf(33.0, 49.0, 69.0, 92.0, 117.0)), Pair(110.0, listOf(36.0, 53.0, 73.0, 97.0, 123.0)), Pair(120.0, listOf(39.0, 56.0, 77.0, 102.0, 128.0))),
             "Squat|male" to listOf(Pair(50.0, listOf(36.0, 55.0, 78.0, 106.0, 137.0)), Pair(60.0, listOf(49.0, 71.0, 98.0, 129.0, 162.0)), Pair(70.0, listOf(62.0, 86.0, 116.0, 149.0, 185.0)), Pair(80.0, listOf(75.0, 101.0, 132.0, 168.0, 206.0)), Pair(85.0, listOf(81.0, 108.0, 140.0, 177.0, 216.0)), Pair(90.0, listOf(87.0, 115.0, 148.0, 186.0, 226.0)), Pair(100.0, listOf(98.0, 128.0, 163.0, 203.0, 244.0)), Pair(110.0, listOf(109.0, 140.0, 177.0, 218.0, 261.0)), Pair(120.0, listOf(120.0, 152.0, 191.0, 233.0, 278.0)), Pair(140.0, listOf(140.0, 175.0, 215.0, 261.0, 307.0))),
             "Squat|female" to listOf(Pair(40.0, listOf(19.0, 34.0, 53.0, 76.0, 102.0)), Pair(50.0, listOf(26.0, 42.0, 63.0, 88.0, 116.0)), Pair(60.0, listOf(32.0, 49.0, 72.0, 99.0, 129.0)), Pair(70.0, listOf(37.0, 56.0, 80.0, 109.0, 140.0)), Pair(80.0, listOf(42.0, 62.0, 88.0, 117.0, 149.0)), Pair(85.0, listOf(45.0, 65.0, 91.0, 121.0, 154.0)), Pair(90.0, listOf(47.0, 68.0, 94.0, 125.0, 158.0)), Pair(100.0, listOf(52.0, 74.0, 101.0, 132.0, 166.0)), Pair(110.0, listOf(56.0, 79.0, 107.0, 139.0, 174.0)), Pair(120.0, listOf(60.0, 83.0, 112.0, 145.0, 181.0))),
+            "Overhead press|male" to listOf(Pair(50.0,listOf(15.0,24.0,36.0,51.0,67.0)),Pair(60.0,listOf(21.0,32.0,45.0,62.0,79.0)),Pair(70.0,listOf(27.0,39.0,54.0,72.0,90.0)),Pair(80.0,listOf(33.0,46.0,62.0,81.0,101.0)),Pair(90.0,listOf(38.0,53.0,70.0,90.0,111.0)),Pair(100.0,listOf(44.0,59.0,77.0,98.0,120.0)),Pair(110.0,listOf(49.0,65.0,84.0,105.0,128.0)),Pair(120.0,listOf(54.0,71.0,90.0,113.0,136.0))),
+            "Overhead press|female" to listOf(Pair(40.0,listOf(7.0,13.0,22.0,33.0,45.0)),Pair(50.0,listOf(10.0,17.0,27.0,38.0,51.0)),Pair(60.0,listOf(12.0,20.0,31.0,43.0,57.0)),Pair(70.0,listOf(15.0,23.0,34.0,47.0,62.0)),Pair(80.0,listOf(17.0,26.0,37.0,51.0,66.0)),Pair(90.0,listOf(19.0,28.0,40.0,54.0,70.0)),Pair(100.0,listOf(21.0,31.0,43.0,58.0,74.0)),Pair(110.0,listOf(23.0,33.0,46.0,61.0,77.0)),Pair(120.0,listOf(24.0,35.0,48.0,64.0,80.0))),
+            "Barbell row|male" to listOf(Pair(50.0,listOf(23.0,36.0,52.0,72.0,94.0)),Pair(60.0,listOf(31.0,46.0,65.0,87.0,111.0)),Pair(70.0,listOf(40.0,56.0,77.0,101.0,127.0)),Pair(80.0,listOf(48.0,66.0,88.0,114.0,141.0)),Pair(90.0,listOf(56.0,75.0,99.0,125.0,154.0)),Pair(100.0,listOf(63.0,84.0,108.0,136.0,166.0)),Pair(110.0,listOf(70.0,92.0,118.0,147.0,178.0)),Pair(120.0,listOf(77.0,100.0,127.0,157.0,188.0))),
+            "Barbell row|female" to listOf(Pair(40.0,listOf(12.0,21.0,33.0,48.0,65.0)),Pair(50.0,listOf(15.0,25.0,38.0,54.0,72.0)),Pair(60.0,listOf(18.0,29.0,43.0,59.0,78.0)),Pair(70.0,listOf(20.0,32.0,46.0,64.0,83.0)),Pair(80.0,listOf(23.0,35.0,50.0,68.0,87.0)),Pair(90.0,listOf(25.0,37.0,53.0,71.0,91.0)),Pair(100.0,listOf(27.0,40.0,56.0,74.0,95.0)),Pair(110.0,listOf(29.0,42.0,58.0,78.0,99.0)),Pair(120.0,listOf(30.0,44.0,61.0,80.0,102.0))),
             "Deadlift|male" to listOf(Pair(50.0, listOf(46.0, 68.0, 96.0, 129.0, 164.0)), Pair(60.0, listOf(61.0, 86.0, 117.0, 153.0, 191.0)), Pair(70.0, listOf(75.0, 103.0, 137.0, 175.0, 216.0)), Pair(80.0, listOf(89.0, 119.0, 155.0, 196.0, 239.0)), Pair(85.0, listOf(96.0, 127.0, 164.0, 205.0, 250.0)), Pair(90.0, listOf(102.0, 134.0, 172.0, 215.0, 260.0)), Pair(100.0, listOf(114.0, 148.0, 188.0, 232.0, 279.0)), Pair(110.0, listOf(126.0, 161.0, 203.0, 249.0, 298.0)), Pair(120.0, listOf(137.0, 174.0, 217.0, 265.0, 315.0)), Pair(140.0, listOf(159.0, 198.0, 243.0, 294.0, 346.0))),
             "Deadlift|female" to listOf(Pair(40.0, listOf(26.0, 43.0, 65.0, 92.0, 121.0)), Pair(50.0, listOf(34.0, 52.0, 76.0, 105.0, 136.0)), Pair(60.0, listOf(40.0, 60.0, 86.0, 116.0, 149.0)), Pair(70.0, listOf(46.0, 68.0, 95.0, 126.0, 160.0)), Pair(80.0, listOf(52.0, 74.0, 102.0, 135.0, 170.0)), Pair(85.0, listOf(54.0, 77.0, 106.0, 139.0, 175.0)), Pair(90.0, listOf(57.0, 80.0, 109.0, 143.0, 180.0)), Pair(100.0, listOf(61.0, 86.0, 116.0, 151.0, 188.0)), Pair(110.0, listOf(66.0, 91.0, 122.0, 158.0, 196.0)), Pair(120.0, listOf(70.0, 96.0, 128.0, 164.0, 203.0)))
         )
@@ -234,6 +238,20 @@ class MainActivity : Activity() {
         if (low.first == high.first) return low.second
         val portion = (bodyweight - low.first) / (high.first - low.first)
         return low.second.zip(high.second) { a, b -> a + (b - a) * portion }
+    }
+
+    // Approximation from Strength Level's published by-age intermediate tables,
+    // relative to the 25–40 adult baseline. Not their proprietary joint model.
+    private fun ageStandardFactor(age: Int): Double {
+        val rows = listOf(15 to 0.854, 20 to 0.978, 25 to 1.0, 40 to 1.0,
+            45 to 0.948, 50 to 0.885, 55 to 0.823, 60 to 0.75,
+            65 to 0.677, 70 to 0.615, 75 to 0.542, 80 to 0.49,
+            85 to 0.438, 90 to 0.396)
+        val lower = rows.last { it.first <= age }
+        val upper = rows.first { it.first >= age }
+        if (lower.first == upper.first) return lower.second
+        return lower.second + (upper.second - lower.second) *
+            (age - lower.first).toDouble() / (upper.first - lower.first)
     }
 
     private fun renderDashboard() {
@@ -280,6 +298,31 @@ class MainActivity : Activity() {
             }
         }
         dashboardCards.addView(sexPicker)
+        dashboardCards.addView(TextView(this).apply {
+            text = "Age (optional; 15–90, approximate adjustment)"
+            textSize = 13f
+            setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+        })
+        val ageInput = EditText(this).apply {
+            hint = "Age in years (leave blank for adult baseline)"
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setSingleLine(true)
+            setText(sexPrefs.getString("strength_age", "") ?: "")
+        }
+        dashboardCards.addView(ageInput)
+        dashboardCards.addView(Button(this).apply {
+            text = "Apply age to strength standards"
+            setOnClickListener {
+                val value = ageInput.text.toString().trim()
+                val parsed = value.toIntOrNull()
+                if (value.isNotEmpty() && (parsed == null || parsed !in 15..90)) {
+                    ageInput.error = "Enter 15–90, or leave blank"
+                } else {
+                    sexPrefs.edit().putString("strength_age", value).apply()
+                    renderDashboard()
+                }
+            }
+        })
         val all = records()
         for (name in chosenLifts()) {
             val entries = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
@@ -336,7 +379,11 @@ class MainActivity : Activity() {
             }
             val reference = sexPrefs.getString("standard_reference", "none") ?: "none"
             val standards = if (bodyweight != null && reference != "none")
-                strengthStandard(name, reference, bodyweight) else null
+                strengthStandard(name, reference, bodyweight)?.let { base ->
+                    val age = sexPrefs.getString("strength_age", "")?.toIntOrNull()
+                    if (age != null && age in 15..90) base.map { it * ageStandardFactor(age) }
+                    else base
+                } else null
             if (standards != null && milestoneBest != null) {
                 val labels = listOf("Beginner", "Novice", "Intermediate", "Advanced", "Elite")
                 val index = standards.indexOfLast { milestoneBest >= it }
@@ -351,7 +398,9 @@ class MainActivity : Activity() {
                     setTextColor(if (darkMode) Color.rgb(216, 169, 79) else Color.rgb(137, 94, 25))
                 })
                 box.addView(TextView(this).apply {
-                    text = "Bodyweight-adjusted, " + reference + " reference · Strength Level community data; not age-adjusted. Estimates are not tested lifts."
+                    text = "Bodyweight-adjusted, " + reference + " reference · " +
+                        (if (sexPrefs.getString("strength_age", "")?.toIntOrNull() in 15..90) "Approximate age adjustment; " else "Adult baseline; ") +
+                        "Strength Level community tables. Estimates are not tested lifts."
                     textSize = 11f
                     setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
                 })
@@ -761,7 +810,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.9 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.0 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
