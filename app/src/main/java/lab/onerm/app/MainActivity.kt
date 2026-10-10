@@ -508,6 +508,46 @@ class MainActivity : Activity() {
         startActivityForResult(intent, 1102)
     }
 
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        try {
+            if (requestCode == 1101) {
+                contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(JSONObject().put("format", "1rm-lab-history-v1")
+                        .put("records", records()).toString(2).toByteArray(Charsets.UTF_8))
+                } ?: error("Cannot write backup")
+                Toast.makeText(this, "History exported", Toast.LENGTH_SHORT).show()
+            } else if (requestCode == 1102) {
+                val raw = contentResolver.openInputStream(uri)?.use { input ->
+                    val bytes = input.readBytes()
+                    require(bytes.size <= 5_000_000) { "Backup too large" }
+                    bytes.toString(Charsets.UTF_8)
+                } ?: error("Cannot read backup")
+                val backup = JSONObject(raw)
+                require(backup.optString("format") == "1rm-lab-history-v1") { "Not a 1RM Lab backup" }
+                val incoming = backup.getJSONArray("records")
+                require(incoming.length() <= 50000) { "Too many records" }
+                for (i in 0 until incoming.length()) {
+                    val entry = incoming.getJSONObject(i)
+                    require(entry.optString("exercise") in exerciseNames) { "Unknown exercise" }
+                    require(entry.optString("type", "estimated") in listOf("estimated", "actual")) { "Invalid type" }
+                    val value = entry.optDouble("value")
+                    require(value.isFinite() && value > 0 && entry.optLong("date") > 0) { "Invalid record" }
+                }
+                android.app.AlertDialog.Builder(this).setTitle("Replace saved history?")
+                    .setMessage("Import " + incoming.length() + " records? Your existing history will be replaced. Export it first to keep a backup.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Replace") { _, _ -> persistRecords(incoming) }
+                    .show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Backup error: " + (e.message ?: "Invalid file"), Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun persistRecords(all: JSONArray) {
         getSharedPreferences("strength_history", MODE_PRIVATE).edit().putString("records", all.toString()).apply()
         updateWidget()
