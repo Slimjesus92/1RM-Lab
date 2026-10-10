@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
+import android.view.MotionEvent
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -15,8 +17,24 @@ class ProgressChart(context: Context) : View(context) {
     var darkMode: Boolean = false
         set(value) { field = value; invalidate() }
     var points: List<Point> = emptyList()
-        set(value) { field = value; invalidate() }
+        set(value) { field = value; selectedIndex = -1; invalidate() }
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var hitPositions: List<Pair<Float, Float>> = emptyList()
+    private var selectedIndex = -1
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_UP && hitPositions.isNotEmpty()) {
+            val i = hitPositions.indices.minByOrNull { kotlin.math.abs(hitPositions[it].first - event.x) } ?: return true
+            selectedIndex = i
+            invalidate()
+            val point = points[i]
+            Toast.makeText(context, String.format(Locale.UK, "%.1f kg · %s", point.value,
+                SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(point.timestamp))),
+                Toast.LENGTH_LONG).show()
+            performClick()
+        }
+        return true
+    }
+    override fun performClick(): Boolean { super.performClick(); return true }
     private val accent get() = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(30, 110, 195)
     private val labelColor get() = if (darkMode) Color.WHITE else Color.DKGRAY
     private val gridColor get() = if (darkMode) Color.rgb(70, 84, 100) else Color.LTGRAY
@@ -62,12 +80,13 @@ class ProgressChart(context: Context) : View(context) {
             val y = bottom - ((point.value - floor) / span).toFloat() * (bottom - top)
             Pair(x, y)
         }
+        hitPositions = positions
         paint.color = accent
         paint.strokeWidth = 2.5f * density
         for (i in 1 until positions.size) {
             canvas.drawLine(positions[i - 1].first, positions[i - 1].second, positions[i].first, positions[i].second, paint)
         }
-        for ((x, y) in positions) canvas.drawCircle(x, y, 3.5f * density, paint)
+        for ((i, pos) in positions.withIndex()) canvas.drawCircle(pos.first, pos.second, (if (i == selectedIndex) 7f else 3.5f) * density, paint)
         paint.color = labelColor
         paint.textSize = 10f * resources.displayMetrics.scaledDensity
         val dateFormat = SimpleDateFormat(if (lastTime - firstTime < 86400000L) "dd MMM HH:mm" else "dd MMM", Locale.UK)
