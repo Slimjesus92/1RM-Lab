@@ -217,6 +217,25 @@ class MainActivity : Activity() {
             .show()
     }
 
+    // Strength Level bodyweight tables (kg), accessed October 2026. Linear interpolation between listed rows.
+    private fun strengthStandard(name: String, sex: String, bodyweight: Double): List<Double>? {
+        val tables = mapOf(
+            "Bench press|male" to listOf(Pair(50.0, listOf(27.0, 41.0, 58.0, 78.0, 101.0)), Pair(60.0, listOf(37.0, 53.0, 72.0, 95.0, 119.0)), Pair(70.0, listOf(47.0, 64.0, 85.0, 110.0, 136.0)), Pair(80.0, listOf(56.0, 75.0, 98.0, 124.0, 151.0)), Pair(85.0, listOf(60.0, 80.0, 104.0, 130.0, 158.0)), Pair(90.0, listOf(65.0, 85.0, 109.0, 137.0, 165.0)), Pair(100.0, listOf(73.0, 95.0, 120.0, 149.0, 179.0)), Pair(110.0, listOf(81.0, 104.0, 131.0, 160.0, 191.0)), Pair(120.0, listOf(89.0, 113.0, 140.0, 171.0, 203.0)), Pair(140.0, listOf(104.0, 129.0, 158.0, 191.0, 225.0))),
+            "Bench press|female" to listOf(Pair(40.0, listOf(10.0, 19.0, 33.0, 49.0, 68.0)), Pair(50.0, listOf(14.0, 25.0, 40.0, 58.0, 79.0)), Pair(60.0, listOf(19.0, 31.0, 47.0, 66.0, 88.0)), Pair(70.0, listOf(22.0, 36.0, 53.0, 74.0, 96.0)), Pair(80.0, listOf(26.0, 40.0, 59.0, 80.0, 104.0)), Pair(85.0, listOf(28.0, 43.0, 61.0, 83.0, 107.0)), Pair(90.0, listOf(30.0, 45.0, 64.0, 86.0, 111.0)), Pair(100.0, listOf(33.0, 49.0, 69.0, 92.0, 117.0)), Pair(110.0, listOf(36.0, 53.0, 73.0, 97.0, 123.0)), Pair(120.0, listOf(39.0, 56.0, 77.0, 102.0, 128.0))),
+            "Squat|male" to listOf(Pair(50.0, listOf(36.0, 55.0, 78.0, 106.0, 137.0)), Pair(60.0, listOf(49.0, 71.0, 98.0, 129.0, 162.0)), Pair(70.0, listOf(62.0, 86.0, 116.0, 149.0, 185.0)), Pair(80.0, listOf(75.0, 101.0, 132.0, 168.0, 206.0)), Pair(85.0, listOf(81.0, 108.0, 140.0, 177.0, 216.0)), Pair(90.0, listOf(87.0, 115.0, 148.0, 186.0, 226.0)), Pair(100.0, listOf(98.0, 128.0, 163.0, 203.0, 244.0)), Pair(110.0, listOf(109.0, 140.0, 177.0, 218.0, 261.0)), Pair(120.0, listOf(120.0, 152.0, 191.0, 233.0, 278.0)), Pair(140.0, listOf(140.0, 175.0, 215.0, 261.0, 307.0))),
+            "Squat|female" to listOf(Pair(40.0, listOf(19.0, 34.0, 53.0, 76.0, 102.0)), Pair(50.0, listOf(26.0, 42.0, 63.0, 88.0, 116.0)), Pair(60.0, listOf(32.0, 49.0, 72.0, 99.0, 129.0)), Pair(70.0, listOf(37.0, 56.0, 80.0, 109.0, 140.0)), Pair(80.0, listOf(42.0, 62.0, 88.0, 117.0, 149.0)), Pair(85.0, listOf(45.0, 65.0, 91.0, 121.0, 154.0)), Pair(90.0, listOf(47.0, 68.0, 94.0, 125.0, 158.0)), Pair(100.0, listOf(52.0, 74.0, 101.0, 132.0, 166.0)), Pair(110.0, listOf(56.0, 79.0, 107.0, 139.0, 174.0)), Pair(120.0, listOf(60.0, 83.0, 112.0, 145.0, 181.0))),
+            "Deadlift|male" to listOf(Pair(50.0, listOf(46.0, 68.0, 96.0, 129.0, 164.0)), Pair(60.0, listOf(61.0, 86.0, 117.0, 153.0, 191.0)), Pair(70.0, listOf(75.0, 103.0, 137.0, 175.0, 216.0)), Pair(80.0, listOf(89.0, 119.0, 155.0, 196.0, 239.0)), Pair(85.0, listOf(96.0, 127.0, 164.0, 205.0, 250.0)), Pair(90.0, listOf(102.0, 134.0, 172.0, 215.0, 260.0)), Pair(100.0, listOf(114.0, 148.0, 188.0, 232.0, 279.0)), Pair(110.0, listOf(126.0, 161.0, 203.0, 249.0, 298.0)), Pair(120.0, listOf(137.0, 174.0, 217.0, 265.0, 315.0)), Pair(140.0, listOf(159.0, 198.0, 243.0, 294.0, 346.0))),
+            "Deadlift|female" to listOf(Pair(40.0, listOf(26.0, 43.0, 65.0, 92.0, 121.0)), Pair(50.0, listOf(34.0, 52.0, 76.0, 105.0, 136.0)), Pair(60.0, listOf(40.0, 60.0, 86.0, 116.0, 149.0)), Pair(70.0, listOf(46.0, 68.0, 95.0, 126.0, 160.0)), Pair(80.0, listOf(52.0, 74.0, 102.0, 135.0, 170.0)), Pair(85.0, listOf(54.0, 77.0, 106.0, 139.0, 175.0)), Pair(90.0, listOf(57.0, 80.0, 109.0, 143.0, 180.0)), Pair(100.0, listOf(61.0, 86.0, 116.0, 151.0, 188.0)), Pair(110.0, listOf(66.0, 91.0, 122.0, 158.0, 196.0)), Pair(120.0, listOf(70.0, 96.0, 128.0, 164.0, 203.0)))
+        )
+        val rows = tables["$name|$sex"] ?: return null
+        if (bodyweight < rows.first().first || bodyweight > rows.last().first) return null
+        val high = rows.firstOrNull { it.first >= bodyweight } ?: return null
+        val low = rows.lastOrNull { it.first <= bodyweight } ?: return null
+        if (low.first == high.first) return low.second
+        val portion = (bodyweight - low.first) / (high.first - low.first)
+        return low.second.zip(high.second) { a, b -> a + (b - a) * portion }
+    }
+
     private fun renderDashboard() {
         if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
         dashboardCards.removeAllViews()
@@ -236,6 +255,31 @@ class MainActivity : Activity() {
             setPadding(0, dp(5), 0, dp(12))
             setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
         })
+        val sexPrefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
+        dashboardCards.addView(TextView(this).apply {
+            text = "Strength Level comparison (optional; sex-specific community data)"
+            textSize = 13f
+            setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+        })
+        val sexPicker = Spinner(this)
+        sexPicker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf("No comparison", "Male reference", "Female reference"))
+        sexPicker.setSelection(when (sexPrefs.getString("standard_reference", "none")) {
+            "male" -> 1
+            "female" -> 2
+            else -> 0
+        })
+        sexPicker.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val value = when (position) { 1 -> "male"; 2 -> "female"; else -> "none" }
+                if (sexPrefs.getString("standard_reference", "none") != value) {
+                    sexPrefs.edit().putString("standard_reference", value).apply()
+                    renderDashboard()
+                }
+            }
+        }
+        dashboardCards.addView(sexPicker)
         val all = records()
         for (name in chosenLifts()) {
             val entries = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
@@ -287,6 +331,28 @@ class MainActivity : Activity() {
                         (if (it in achieved) "✓ " else "○ ") + String.format(Locale.UK, "%.2f×", it)
                     }
                     textSize = 12f
+                    setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+                })
+            }
+            val reference = sexPrefs.getString("standard_reference", "none") ?: "none"
+            val standards = if (bodyweight != null && reference != "none")
+                strengthStandard(name, reference, bodyweight) else null
+            if (standards != null && milestoneBest != null) {
+                val labels = listOf("Beginner", "Novice", "Intermediate", "Advanced", "Elite")
+                val index = standards.indexOfLast { milestoneBest >= it }
+                val current = if (index < 0) "Below beginner" else labels[index]
+                val nextIndex = (index + 1).takeIf { it < labels.size }
+                box.addView(TextView(this).apply {
+                    text = "Strength Level benchmark: $current (estimated 1RM)" +
+                        (if (nextIndex == null) "" else
+                            "\nNext: " + labels[nextIndex] + " at " +
+                            String.format(Locale.UK, "%.1f kg", standards[nextIndex]))
+                    textSize = 13f
+                    setTextColor(if (darkMode) Color.rgb(216, 169, 79) else Color.rgb(137, 94, 25))
+                })
+                box.addView(TextView(this).apply {
+                    text = "Bodyweight-adjusted, " + reference + " reference · Strength Level community data; not age-adjusted. Estimates are not tested lifts."
+                    textSize = 11f
                     setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
                 })
             }
@@ -695,7 +761,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.8 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.9 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
