@@ -339,6 +339,21 @@ class MainActivity : Activity() {
         section.addView(output)
         val table = TextView(this).apply { textSize = 15f; setPadding(0, dp(6), 0, dp(12)) }
         section.addView(table)
+        section.addView(TextView(this).apply {
+            text = "REP-MAX ESTIMATOR"
+            textSize = 18f
+            setPadding(0, dp(16), 0, dp(6))
+        })
+        val repLabel = TextView(this).apply { textSize = 15f }
+        section.addView(repLabel)
+        val repSlider = SeekBar(this).apply { max = 11; progress = 4 }
+        section.addView(repSlider)
+        val repOutput = TextView(this).apply { textSize = 18f; setPadding(0, dp(4), 0, dp(8)) }
+        section.addView(repOutput)
+        section.addView(TextView(this).apply {
+            text = "Inverse Epley estimate for a maximum-effort set, not a prescribed working weight. Estimates become less reliable at higher reps."
+            textSize = 12f
+        })
         val calculate = {
             val name = exerciseNames[picker.selectedItemPosition.coerceIn(0, exerciseNames.lastIndex)]
             val now = System.currentTimeMillis()
@@ -358,6 +373,8 @@ class MainActivity : Activity() {
             if (chosen == null) {
                 output.text = if (recent) "No estimated 1RM saved in the last 30 days" else "$percent% — save an estimate first"
                 table.text = if (recent) "Switch to All-time estimated PB or log a new estimate." else ""
+                repLabel.text = "Target reps: ${repSlider.progress + 1}"
+                repOutput.text = "Log an estimated 1RM to calculate a rep max"
             } else {
                 val base = chosen.second
                 fun load(pct: Int): Double = kotlin.math.round(base * pct / 100.0 * 2.0) / 2.0
@@ -371,8 +388,17 @@ class MainActivity : Activity() {
                     presets.joinToString("    ") { pct ->
                         "$pct%: " + String.format(Locale.UK, "%.1f kg", load(pct))
                     } + "\nReference loads only; not a prescribed workout."
+                val reps = repSlider.progress + 1
+                repLabel.text = "Target reps: $reps"
+                val repMax = kotlin.math.round(base / (1.0 + reps / 30.0) * 2.0) / 2.0
+                repOutput.text = "Estimated $reps-rep max: " + String.format(Locale.UK, "%.1f kg", repMax)
             }
         }
+        repSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) { calculate() }
+            override fun onStartTrackingTouch(bar: SeekBar?) {}
+            override fun onStopTrackingTouch(bar: SeekBar?) {}
+        })
         percentage.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) { calculate() }
             override fun onStartTrackingTouch(bar: SeekBar?) {}
