@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.view.View
 import android.text.InputType
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.*
 import lab.onerm.LiftSet
 import lab.onerm.OneRmEngine
@@ -51,13 +52,27 @@ class MainActivity : Activity() {
         window.statusBarColor = if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252)
         window.navigationBarColor = window.statusBarColor
         window.decorView.systemUiVisibility = if (darkMode) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        // Keep content above Android system navigation, including Samsung three-button navigation.
+        window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 36, 28, 20)
             setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252))
         }
         rootView = root
-        val scroll = ScrollView(this).apply { addView(root); setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252)) }
+        val scroll = ScrollView(this).apply {
+            addView(root)
+            clipToPadding = false
+            fillViewport = true
+            setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252))
+            val baseBottom = (28 * resources.displayMetrics.density).toInt()
+            setPadding(0, 0, 0, baseBottom)
+            setOnApplyWindowInsetsListener { view, insets ->
+                val navigationBottom = insets.systemWindowInsetBottom
+                view.setPadding(0, 0, 0, baseBottom + navigationBottom)
+                insets
+            }
+        }
         setContentView(scroll)
         root.addView(TextView(this).apply { text = "1RM LAB"; textSize = 28f })
         root.addView(TextView(this).apply { text = "Research-informed strength estimates • kg"; textSize = 14f })
