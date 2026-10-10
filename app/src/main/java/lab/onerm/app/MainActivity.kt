@@ -168,9 +168,62 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
+    private fun showTrophyCabinet() {
+        val all = records()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+        }
+        val fmt = { value: Double -> String.format(Locale.UK, "%.1f kg", value) }
+        val saved = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+        var count = 0
+        for (name in exerciseNames) {
+            val liftRecords = saved.filter { it.optString("exercise") == name }
+            val estimates = liftRecords.filter { it.optString("type", "estimated") != "actual" }
+                .map { it.optDouble("value") }.filter { it.isFinite() && it > 0.0 }
+            val tested = liftRecords.filter { it.optString("type") == "actual" }
+                .map { it.optDouble("value") }.filter { it.isFinite() && it > 0.0 }
+            if (estimates.isEmpty() && tested.isEmpty()) continue
+            count++
+            val panel = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), dp(14), dp(14), dp(14))
+                background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.rgb(245, 248, 252), 16)
+            }
+            panel.addView(TextView(this).apply {
+                text = "🏆 $name"
+                textSize = 18f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+            })
+            panel.addView(TextView(this).apply {
+                text = "Estimated 1RM PB: " + (estimates.maxOrNull()?.let(fmt) ?: "—") +
+                    "\nTested 1RM PB: " + (tested.maxOrNull()?.let(fmt) ?: "—") +
+                    "\nEstimated entries: " + estimates.size + " · Tested entries: " + tested.size
+                textSize = 15f
+                setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+            })
+            content.addView(panel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        }
+        if (count == 0) content.addView(TextView(this).apply {
+            text = "No personal records yet. Log an estimated or tested 1RM to get started."
+            setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+        })
+        val scroll = ScrollView(this).apply { addView(content) }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Personal records · Trophy cabinet")
+            .setView(scroll)
+            .setPositiveButton("Done", null)
+            .show()
+    }
+
     private fun renderDashboard() {
         if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
         dashboardCards.removeAllViews()
+        dashboardCards.addView(Button(this).apply {
+            text = "🏆 View personal records"
+            setOnClickListener { showTrophyCabinet() }
+        })
         dashboardCards.addView(Button(this).apply {
             val current = getSharedPreferences("ui_settings", MODE_PRIVATE).getString("bodyweight_kg", null)
             text = if (current == null) "Set bodyweight for milestones"
@@ -642,7 +695,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.7 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.8 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
