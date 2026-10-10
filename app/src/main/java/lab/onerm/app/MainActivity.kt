@@ -172,7 +172,19 @@ class MainActivity : Activity() {
         exercise = Spinner(this)
         val names = exerciseNames
         exercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
-        historyPage.addView(exercise)
+        calculator.addView(TextView(this).apply { text = "SELECT LIFT"; textSize = 14f })
+        calculator.addView(exercise)
+        val historyExercise = Spinner(this)
+        historyExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        historyPage.addView(historyExercise)
+        historyExercise.setSelection(0)
+        historyExercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (exercise.selectedItemPosition != position) exercise.setSelection(position)
+                showHistory()
+            }
+        }
         val weight = edit("Weight (kg)", true)
         val reps = edit("Repetitions (1–15)", false)
         val rir = edit("RIR (optional, 0–5)", false)
@@ -228,6 +240,7 @@ class MainActivity : Activity() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
                 sets.clear(); refresh(); showHistory()
+                if (historyExercise.selectedItemPosition != position) historyExercise.setSelection(position)
             }
         }
         showHistory()
