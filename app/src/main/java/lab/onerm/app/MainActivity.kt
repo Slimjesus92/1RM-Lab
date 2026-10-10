@@ -26,6 +26,63 @@ class MainActivity : Activity() {
     private lateinit var widgetExercise: Spinner
     private lateinit var rootView: LinearLayout
     private var darkMode = true
+    private lateinit var dashboard: LinearLayout
+    private lateinit var calculator: LinearLayout
+    private lateinit var historyPage: LinearLayout
+    private lateinit var settingsPage: LinearLayout
+    private lateinit var dashboardCards: LinearLayout
+    private lateinit var dashboardChart: ProgressChart
+    private lateinit var navButtons: List<Button>
+    private val exerciseNames = listOf("Bench press", "Squat", "Deadlift", "Overhead press", "Barbell row", "Other")
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+    private fun showTab(index: Int) {
+        listOf(dashboard, calculator, historyPage, settingsPage).forEachIndexed { i, page ->
+            page.visibility = if (i == index) View.VISIBLE else View.GONE
+        }
+        navButtons.forEachIndexed { i, button -> button.alpha = if (i == index) 1f else 0.6f }
+    }
+    private fun renderDashboard() {
+        if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
+        dashboardCards.removeAllViews()
+        val all = records()
+        for (name in listOf("Bench press", "Squat", "Deadlift")) {
+            val entries = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+                .filter { it.optString("exercise") == name }
+            val estimated = entries.filter { it.optString("type", "estimated") != "actual" }
+                .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
+            val tested = entries.filter { it.optString("type") == "actual" }
+                .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(18), dp(16), dp(18), dp(16))
+                setBackgroundColor(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
+            }
+            box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f })
+            box.addView(TextView(this).apply {
+                text = if (estimated.isEmpty()) "No estimate yet" else String.format(Locale.UK, "%.1f kg", estimated.maxOrNull())
+                textSize = 28f
+                setTextColor(if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175))
+            })
+            box.addView(TextView(this).apply {
+                text = if (tested.isEmpty()) "Estimated personal best" else
+                    "Tested PB: " + String.format(Locale.UK, "%.1f kg", tested.maxOrNull())
+                textSize = 12f
+            })
+            box.setOnClickListener {
+                exercise.setSelection(exerciseNames.indexOf(name))
+                showTab(2)
+            }
+            dashboardCards.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+        }
+        val selected = exercise.selectedItem?.toString() ?: exerciseNames[0]
+        dashboardChart.points = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+            .filter { it.optString("exercise") == selected && it.optString("type", "estimated") != "actual" }
+            .mapNotNull {
+                val value = it.optDouble("value")
+                if (value.isFinite() && value > 0) ProgressChart.Point(value, it.optLong("date", System.currentTimeMillis())) else null
+            }
+    }
+
     private fun applyTheme(view: View) {
         val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
         val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
@@ -73,23 +130,59 @@ class MainActivity : Activity() {
                 insets
             }
         }
-        setContentView(scroll)
+        val frame = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252))
+        }
+        frame.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            setBackgroundColor(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
+        }
+        navButtons = listOf("Home", "Calculate", "History", "Settings").mapIndexed { index, label ->
+            Button(this).apply {
+                text = label; textSize = 11f; isAllCaps = false
+                setOnClickListener { showTab(index) }
+            }.also { nav.addView(it, LinearLayout.LayoutParams(0, dp(52), 1f)) }
+        }
+        frame.addView(nav)
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            nav.setPadding(dp(4), dp(4), dp(4), dp(4) + insets.systemWindowInsetBottom)
+            insets
+        }
+        setContentView(frame)
+        dashboard = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        calculator = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        historyPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(dashboard); root.addView(calculator)
+        root.addView(historyPage); root.addView(settingsPage)
+        dashboard.addView(TextView(this).apply { text = "STRENGTH DASHBOARD"; textSize = 24f })
+        dashboardCards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(18), 0, 0) }
+        dashboard.addView(dashboardCards)
+        dashboard.addView(TextView(this).apply { text = "YOUR PROGRESSION"; textSize = 18f })
+        dashboardChart = ProgressChart(this).apply { darkMode = this@MainActivity.darkMode }
+        dashboard.addView(dashboardChart)
+        calculator.addView(TextView(this).apply { text = "1RM CALCULATOR"; textSize = 22f })
+        historyPage.addView(TextView(this).apply { text = "TRAINING HISTORY"; textSize = 22f })
+        settingsPage.addView(TextView(this).apply { text = "SETTINGS"; textSize = 22f })
         root.addView(TextView(this).apply { text = "1RM LAB"; textSize = 28f })
         root.addView(TextView(this).apply { text = "Research-informed strength estimates • kg"; textSize = 14f })
         exercise = Spinner(this)
-        val names = listOf("Bench press", "Squat", "Deadlift", "Overhead press", "Barbell row", "Other")
+        val names = exerciseNames
         exercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
-        root.addView(exercise)
+        historyPage.addView(exercise)
         val weight = edit("Weight (kg)", true)
         val reps = edit("Repetitions (1–15)", false)
         val rir = edit("RIR (optional, 0–5)", false)
-        root.addView(weight); root.addView(reps); root.addView(rir)
+        calculator.addView(weight); calculator.addView(reps); calculator.addView(rir)
         val add = Button(this).apply { text = "Add set" }
-        root.addView(add)
+        calculator.addView(add)
         rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(rows)
+        calculator.addView(rows)
         result = TextView(this).apply { text = "Add a set to estimate your 1RM"; textSize = 22f; setPadding(0, 18, 0, 18) }
-        root.addView(result)
+        calculator.addView(result)
         root.addView(Button(this).apply {
             text = "Save session"
             setOnClickListener {
@@ -99,13 +192,13 @@ class MainActivity : Activity() {
             }
         })
         history = TextView(this).apply { textSize = 17f; setPadding(0, 24, 0, 16) }
-        root.addView(history)
+        historyPage.addView(history)
         chart = ProgressChart(this)
-        root.addView(chart)
-        root.addView(TextView(this).apply { text = "WIDGET EXERCISE"; textSize = 18f })
+        historyPage.addView(chart)
+        settingsPage.addView(TextView(this).apply { text = "WIDGET EXERCISE"; textSize = 18f })
         widgetExercise = Spinner(this)
         widgetExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
-        root.addView(widgetExercise)
+        settingsPage.addView(widgetExercise)
         val widgetPrefs = getSharedPreferences("last_estimate", MODE_PRIVATE)
         widgetExercise.setSelection(names.indexOf(widgetPrefs.getString("widget_exercise", names[0])).coerceAtLeast(0))
         widgetExercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
@@ -115,9 +208,9 @@ class MainActivity : Activity() {
                 updateWidget()
             }
         }
-        root.addView(TextView(this).apply { text = "ACTUAL 1RM (TESTED LIFT)"; textSize = 18f; setPadding(0, 18, 0, 0) })
+        calculator.addView(TextView(this).apply { text = "ACTUAL 1RM (TESTED LIFT)"; textSize = 18f; setPadding(0, 18, 0, 0) })
         val actualWeight = edit("Weight lifted for 1 rep (kg)", true)
-        root.addView(actualWeight)
+        calculator.addView(actualWeight)
         root.addView(Button(this).apply {
             text = "Save actual 1RM"
             setOnClickListener {
@@ -138,7 +231,7 @@ class MainActivity : Activity() {
             }
         }
         showHistory()
-        root.addView(TextView(this).apply { text = "Estimates are not measured 1RMs. Unknown RIR is provisionally treated as 0 for calculation, and should not be interpreted as confirmed failure. Set spread is not a statistical confidence interval." })
+        settingsPage.addView(TextView(this).apply { text = "Estimates are not measured 1RMs. Unknown RIR is provisionally treated as 0 for calculation, and should not be interpreted as confirmed failure. Set spread is not a statistical confidence interval." })
         add.setOnClickListener {
             try {
                 val w = weight.text.toString().toDouble()
@@ -152,12 +245,12 @@ class MainActivity : Activity() {
                 Toast.makeText(this, e.message ?: "Check inputs", Toast.LENGTH_LONG).show()
             }
         }
-        root.addView(Button(this).apply { text = "Clear session"; setOnClickListener { sets.clear(); refresh() } })
-        root.addView(TextView(this).apply { text = "APPEARANCE"; textSize = 20f; setPadding(0, 28, 0, 8) })
+        calculator.addView(Button(this).apply { text = "Clear session"; setOnClickListener { sets.clear(); refresh() } })
+        settingsPage.addView(TextView(this).apply { text = "APPEARANCE"; textSize = 20f; setPadding(0, 28, 0, 8) })
         val themes = listOf("Dark / Performance", "Light / Scientific")
         val themeSpinner = Spinner(this)
         themeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, themes)
-        root.addView(themeSpinner)
+        settingsPage.addView(themeSpinner)
         themeSpinner.setSelection(if (darkMode) 0 else 1)
         themeSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
@@ -170,8 +263,11 @@ class MainActivity : Activity() {
                 }
             }
         }
-        root.addView(TextView(this).apply { text = "1RM Lab v0.5 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.6 · Theme choice is saved automatically." })
         applyTheme(root)
+        applyTheme(nav)
+        renderDashboard()
+        showTab(0)
         chart.darkMode = darkMode
     }
     private fun records(): JSONArray {
@@ -224,6 +320,7 @@ class MainActivity : Activity() {
                 "\nEstimated sessions: " + estimates.size
         val actualLabel = if (actuals.isEmpty()) "No tested 1RM saved"
             else "Tested 1RM personal best: " + format(actuals.maxOrNull() ?: 0.0)
+        renderDashboard()
         history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n\n$actualLabel\n\nEstimated 1RM progression:"
     }
     private fun edit(hintText: String, decimal: Boolean) = EditText(this).apply {
