@@ -130,6 +130,41 @@ class MainActivity : Activity() {
             else -> "Holding steady"
         }
     }
+
+    private fun trainingWeightTool(): LinearLayout {
+        val section = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        section.addView(TextView(this).apply { text = "Training weights"; textSize = 20f })
+        val picker = Spinner(this)
+        picker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, exerciseNames)
+        section.addView(picker)
+        val percentage = SeekBar(this).apply { max = 90; progress = 65 }
+        section.addView(percentage)
+        val output = TextView(this).apply { textSize = 18f; setPadding(0, dp(8), 0, dp(12)) }
+        section.addView(output)
+        val calculate = {
+            val name = exerciseNames[picker.selectedItemPosition.coerceAtLeast(0)]
+            val all = records()
+            val values = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+                .filter { it.optString("exercise") == name && it.optString("type", "estimated") != "actual" }
+                .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
+            val percent = percentage.progress + 10
+            output.text = if (values.isEmpty()) "$percent% — save an estimate first" else {
+                val kg = kotlin.math.round(values.maxOrNull()!! * percent / 100.0 * 2.0) / 2.0
+                "$percent% of estimated PB = " + String.format(Locale.UK, "%.1f kg", kg)
+            }
+        }
+        percentage.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) { calculate() }
+            override fun onStartTrackingTouch(bar: SeekBar?) {}
+            override fun onStopTrackingTouch(bar: SeekBar?) {}
+        })
+        picker.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) { calculate() }
+        }
+        calculate()
+        return section
+    }
     private fun applyTheme(view: View) {
         val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
         val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
@@ -219,6 +254,7 @@ class MainActivity : Activity() {
             addView(dashboardChart)
         })
         calculator.addView(title("1RM Calculator"))
+        calculator.addView(trainingWeightTool())
         historyPage.addView(title("Training history"))
         settingsPage.addView(title("Settings"))
 
@@ -330,7 +366,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.7 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.8 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
