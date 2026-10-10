@@ -70,8 +70,8 @@ class ProgressChart(context: Context) : View(context) {
         for ((x, y) in positions) canvas.drawCircle(x, y, 3.5f * density, paint)
         paint.color = labelColor
         paint.textSize = 10f * resources.displayMetrics.scaledDensity
-        val dateFormat = SimpleDateFormat("dd MMM", Locale.UK)
-        val ticks = if (lastTime > firstTime) listOf(0.0, 0.5, 1.0) else listOf(0.5)
+        val dateFormat = SimpleDateFormat(if (lastTime - firstTime < 86400000L) "dd MMM HH:mm" else "dd MMM", Locale.UK)
+        val ticks = if (lastTime - firstTime >= 86400000L) listOf(0.0, 0.5, 1.0) else listOf(0.5)
         for (fraction in ticks) {
             val stamp = firstTime + ((lastTime - firstTime) * fraction).toLong()
             val label = dateFormat.format(Date(stamp))
