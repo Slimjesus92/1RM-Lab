@@ -103,6 +103,7 @@ class MainActivity : Activity() {
                     "Tested PB: " + String.format(Locale.UK, "%.1f kg", tested.maxOrNull())
                 textSize = 12f
             })
+            box.addView(TextView(this).apply { text = progressLabel(estimated); textSize = 12f })
             box.setOnClickListener {
                 exercise.setSelection(exerciseNames.indexOf(name))
                 chartLift = name
@@ -119,6 +120,16 @@ class MainActivity : Activity() {
             }
     }
 
+
+    private fun progressLabel(values: List<Double>): String {
+        if (values.size < 2) return "Log another session to see progress"
+        val delta = values.last() - values.first()
+        return when {
+            delta > 0.5 -> "Improving: " + String.format(Locale.UK, "%+.1f kg", delta)
+            delta < -0.5 -> "Below first estimate: " + String.format(Locale.UK, "%+.1f kg", delta)
+            else -> "Holding steady"
+        }
+    }
     private fun applyTheme(view: View) {
         val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
         val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
