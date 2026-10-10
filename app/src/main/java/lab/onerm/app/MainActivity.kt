@@ -103,6 +103,39 @@ class MainActivity : Activity() {
         }
         navButtons.forEachIndexed { i, button -> button.alpha = if (i == index) 1f else 0.6f }
     }
+    private fun editGoal(name: String) {
+        val prefs = getSharedPreferences("strength_goals", MODE_PRIVATE)
+        val field = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            hint = "Target 1RM in kg"
+            prefs.getString(name, null)?.let { setText(it) }
+            setSelectAllOnFocus(true)
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("$name strength goal")
+            .setMessage("Set a target estimated 1RM in kilograms.")
+            .setView(field)
+            .setNegativeButton("Cancel", null)
+            .setNeutralButton("Remove goal") { _, _ ->
+                prefs.edit().remove(name).apply()
+                renderDashboard()
+            }
+            .setPositiveButton("Save", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val target = field.text.toString().toDoubleOrNull()
+                if (target == null || !target.isFinite() || target <= 0.0 || target > 2000.0) {
+                    field.error = "Enter a valid target (0–2000 kg)"
+                } else {
+                    prefs.edit().putString(name, target.toString()).apply()
+                    dialog.dismiss()
+                    renderDashboard()
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun renderDashboard() {
         if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
         dashboardCards.removeAllViews()
@@ -135,6 +168,28 @@ class MainActivity : Activity() {
                 text = strengthInsight(name, all)
                 textSize = 12f
                 setTextColor(if (darkMode) Color.rgb(155, 210, 238) else Color.rgb(36, 101, 175))
+            })
+            val goal = getSharedPreferences("strength_goals", MODE_PRIVATE)
+                .getString(name, null)?.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 }
+            val best = estimated.maxOrNull()
+            if (goal != null) {
+                val ratio = if (best == null) 0.0 else (best / goal).coerceIn(0.0, 1.0)
+                box.addView(TextView(this).apply {
+                    text = if (best == null) "Goal: " + String.format(Locale.UK, "%.1f kg", goal) + " · Log a set to start"
+                        else if (best >= goal) "Goal achieved! " + String.format(Locale.UK, "%.1f / %.1f kg", best, goal)
+                        else String.format(Locale.UK, "Goal: %.1f kg · %.1f kg remaining", goal, goal - best)
+                    textSize = 12f
+                    setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+                })
+                box.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    max = 1000
+                    progress = (ratio * 1000).toInt()
+                    progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(216, 169, 79))
+                })
+            }
+            box.addView(Button(this).apply {
+                text = if (goal == null) "Set strength goal" else "Edit strength goal"
+                setOnClickListener { editGoal(name) }
             })
             box.setOnClickListener {
                 exercise.setSelection(exerciseNames.indexOf(name))
@@ -443,7 +498,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.12 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v1.2 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
