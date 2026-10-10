@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private lateinit var weightInput: EditText
     private lateinit var repsInput: EditText
     private lateinit var rirInput: EditText
+    private lateinit var historyExercisePicker: Spinner
     private fun recallSet() {
         if (!::weightInput.isInitialized) return
         val name = exercise.selectedItem?.toString() ?: return
@@ -298,6 +299,7 @@ class MainActivity : Activity() {
         calculator.addView(exercise)
         val historyExercise = Spinner(this)
         historyExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        historyExercisePicker = historyExercise
         historyPage.addView(historyExercise)
         historyPage.addView(Button(this).apply { text = "Edit saved records"; setOnClickListener { chooseRecord() } })
         val dateFilter = Spinner(this)
@@ -470,9 +472,9 @@ class MainActivity : Activity() {
         OneRmWidget().onUpdate(this, manager, manager.getAppWidgetIds(ComponentName(this, OneRmWidget::class.java)))
     }
     private fun showHistory() {
-        if (!::history.isInitialized) return
+        if (!::history.isInitialized || !::historyExercisePicker.isInitialized) return
         val all = records()
-        val selected = exercise.selectedItem?.toString() ?: return
+        val selected = historyExercisePicker.selectedItem?.toString() ?: return
         val matching = (0 until all.length()).mapNotNull { i ->
             all.optJSONObject(i)?.takeIf { it.optString("exercise") == selected }
         }
@@ -605,7 +607,7 @@ class MainActivity : Activity() {
     }
     private fun chooseRecord() {
         val all = records()
-        val name = exercise.selectedItem?.toString() ?: return
+        val name = historyExercisePicker.selectedItem?.toString() ?: return
         val indices = (0 until all.length()).filter { all.optJSONObject(it)?.optString("exercise") == name }.reversed()
         if (indices.isEmpty()) {
             Toast.makeText(this, "No saved records for this lift", Toast.LENGTH_SHORT).show()
