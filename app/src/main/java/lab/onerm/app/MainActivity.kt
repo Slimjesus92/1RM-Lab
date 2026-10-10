@@ -19,6 +19,8 @@ class MainActivity : Activity() {
     private lateinit var result: TextView
     private lateinit var exercise: Spinner
     private lateinit var history: TextView
+    private lateinit var chart: ProgressChart
+    private lateinit var widgetExercise: Spinner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,17 +50,43 @@ class MainActivity : Activity() {
             text = "Save session"
             setOnClickListener {
                 if (sets.isEmpty()) { Toast.makeText(this@MainActivity, "Add a set first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-                val prefs = getSharedPreferences("strength_history", MODE_PRIVATE)
-                val records = JSONArray(prefs.getString("records", "[]"))
-                records.put(JSONObject().put("exercise", exercise.selectedItem.toString())
-                    .put("value", sets.maxOf { OneRmEngine.estimate(it).combinedKg })
-                    .put("date", System.currentTimeMillis()))
-                prefs.edit().putString("records", records.toString()).apply()
+                saveRecord(exercise.selectedItem.toString(), sets.maxOf { OneRmEngine.estimate(it).combinedKg }, "estimated")
                 showHistory()
             }
         })
         history = TextView(this).apply { textSize = 17f; setPadding(0, 24, 0, 16) }
         root.addView(history)
+        chart = ProgressChart(this)
+        root.addView(chart)
+        root.addView(TextView(this).apply { text = "WIDGET EXERCISE"; textSize = 18f })
+        widgetExercise = Spinner(this)
+        widgetExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        root.addView(widgetExercise)
+        val widgetPrefs = getSharedPreferences("last_estimate", MODE_PRIVATE)
+        widgetExercise.setSelection(names.indexOf(widgetPrefs.getString("widget_exercise", names[0])).coerceAtLeast(0))
+        widgetExercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                widgetPrefs.edit().putString("widget_exercise", names[position]).apply()
+                updateWidget()
+            }
+        }
+        root.addView(TextView(this).apply { text = "ACTUAL 1RM (TESTED LIFT)"; textSize = 18f; setPadding(0, 18, 0, 0) })
+        val actualWeight = edit("Weight lifted for 1 rep (kg)", true)
+        root.addView(actualWeight)
+        root.addView(Button(this).apply {
+            text = "Save actual 1RM"
+            setOnClickListener {
+                val value = actualWeight.text.toString().toDoubleOrNull()
+                if (value == null || !value.isFinite() || value <= 0.0) {
+                    Toast.makeText(this@MainActivity, "Enter a valid lifted weight", Toast.LENGTH_SHORT).show()
+                } else {
+                    saveRecord(exercise.selectedItem.toString(), value, "actual")
+                    actualWeight.text.clear()
+                    showHistory()
+                }
+            }
+        })
         exercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
@@ -82,27 +110,53 @@ class MainActivity : Activity() {
         }
         root.addView(Button(this).apply { text = "Clear session"; setOnClickListener { sets.clear(); refresh() } })
     }
+    private fun records(): JSONArray {
+        val raw = getSharedPreferences("strength_history", MODE_PRIVATE).getString("records", "[]") ?: "[]"
+        return try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+    }
+    private fun saveRecord(name: String, value: Double, type: String) {
+        val all = records()
+        all.put(JSONObject().put("exercise", name).put("value", value)
+            .put("date", System.currentTimeMillis()).put("type", type))
+        getSharedPreferences("strength_history", MODE_PRIVATE).edit().putString("records", all.toString()).apply()
+        updateWidget()
+    }
+    private fun updateWidget() {
+        val prefs = getSharedPreferences("last_estimate", MODE_PRIVATE)
+        val name = prefs.getString("widget_exercise", "Bench press") ?: "Bench press"
+        val all = records()
+        val estimates = (0 until all.length()).mapNotNull { i ->
+            all.optJSONObject(i)?.takeIf {
+                it.optString("exercise") == name && it.optString("type", "estimated") != "actual"
+            }?.optDouble("value")?.takeIf { it.isFinite() && it > 0 }
+        }
+        val label = if (estimates.isEmpty()) "$name: No saved estimate"
+            else "$name: " + String.format(Locale.UK, "%.1f kg", estimates.maxOrNull())
+        prefs.edit().putString("label", label).apply()
+        val manager = AppWidgetManager.getInstance(this)
+        OneRmWidget().onUpdate(this, manager, manager.getAppWidgetIds(ComponentName(this, OneRmWidget::class.java)))
+    }
     private fun showHistory() {
         if (!::history.isInitialized) return
-        val prefs = getSharedPreferences("strength_history", MODE_PRIVATE)
-        val records = JSONArray(prefs.getString("records", "[]"))
+        val all = records()
         val selected = exercise.selectedItem?.toString() ?: return
-        val values = (0 until records.length()).mapNotNull { i ->
-            records.optJSONObject(i)?.takeIf { it.optString("exercise") == selected }?.optDouble("value")
+        val matching = (0 until all.length()).mapNotNull { i ->
+            all.optJSONObject(i)?.takeIf { it.optString("exercise") == selected }
         }
-        history.text = if (values.isEmpty()) "No saved sessions for this exercise yet."
-            else {
-                val best = values.maxOrNull() ?: 0.0
-                val trend = values.takeLast(10).joinToString("  ") { value ->
-                    val level = if (best <= 0.0) 0 else ((value / best) * 7).toInt().coerceIn(0, 7)
-                    "▁▂▃▄▅▆▇█"[level].toString()
-                }
-                "PERSONAL BEST  " + String.format(Locale.UK, "%.1f kg", best) +
-                    "\\nLatest  " + String.format(Locale.UK, "%.1f kg", values.last()) +
-                    "\\nChange  " + String.format(Locale.UK, "%+.1f kg", values.last() - values.first()) +
-                    "\\nSaved sessions  " + values.size +
-                    "\\nRecent progression  " + trend
-            }
+        val estimates = matching.filter { it.optString("type", "estimated") != "actual" }
+            .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
+        val actuals = matching.filter { it.optString("type") == "actual" }
+            .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
+        chart.values = estimates
+        val format = { value: Double -> String.format(Locale.UK, "%.1f kg", value) }
+        val estimateLabel = if (estimates.isEmpty()) "No estimated sessions saved"
+            else "Estimated best: " + format(estimates.maxOrNull() ?: 0.0) +
+                "\nLatest estimate: " + format(estimates.last()) +
+                "\nChange: " + String.format(Locale.UK, "%+.1f kg", estimates.last() - estimates.first()) +
+                "\nEstimated sessions: " + estimates.size
+        val actualLabel = if (actuals.isEmpty()) "No tested 1RM saved"
+            else "Tested 1RM personal best: " + format(actuals.maxOrNull() ?: 0.0)
+        history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n\n$actualLabel\n\nEstimated 1RM progression:"
     }
     private fun edit(hintText: String, decimal: Boolean) = EditText(this).apply {
         hint = hintText
@@ -126,10 +180,7 @@ class MainActivity : Activity() {
         val strongest = sets.maxOf { OneRmEngine.estimate(it).combinedKg }
         val label = String.format(Locale.UK, "%.1f kg", strongest)
         result.text = "Strongest estimated 1RM: $label\nSession median: ${String.format(Locale.UK, "%.1f", estimate.oneRmKg)} kg (${estimate.setsUsed} sets)\nSet disagreement: ${String.format(Locale.UK, "%.1f", estimate.spreadKg)} kg"
-        getSharedPreferences("last_estimate", MODE_PRIVATE).edit().putString("label", "${exercise.selectedItem}: $label").apply()
-        val manager = AppWidgetManager.getInstance(this)
-        val component = ComponentName(this, OneRmWidget::class.java)
-        val ids = manager.getAppWidgetIds(component)
-        OneRmWidget().onUpdate(this, manager, ids)
+        // The widget follows its selected exercise and saved history.
+        updateWidget()
     }
 }
