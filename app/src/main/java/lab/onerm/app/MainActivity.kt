@@ -47,7 +47,13 @@ class MainActivity : Activity() {
     private fun recallSet() {
         if (!::weightInput.isInitialized) return
         val name = exercise.selectedItem?.toString() ?: return
-        val saved = getSharedPreferences("recent_sets", MODE_PRIVATE).getString(name, null) ?: return
+        val saved = getSharedPreferences("recent_sets", MODE_PRIVATE).getString(name, null)
+        if (saved == null) {
+            weightInput.text.clear()
+            repsInput.text.clear()
+            rirInput.text.clear()
+            return
+        }
         try {
             val obj = JSONObject(saved)
             weightInput.setText(obj.optString("weight"))
@@ -112,7 +118,7 @@ class MainActivity : Activity() {
                 background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE, 22)
                 elevation = dp(3).toFloat()
             }
-            box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f })
+            box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f; setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)) })
             box.addView(TextView(this).apply {
                 text = if (estimated.isEmpty()) "—" else String.format(Locale.UK, "%.1f kg", estimated.maxOrNull())
                 textSize = 32f; setTypeface(null, Typeface.BOLD)
@@ -121,9 +127,9 @@ class MainActivity : Activity() {
             box.addView(TextView(this).apply {
                 text = if (tested.isEmpty()) "Estimated personal best" else
                     "Tested PB: " + String.format(Locale.UK, "%.1f kg", tested.maxOrNull())
-                textSize = 12f
+                textSize = 12f; setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
             })
-            box.addView(TextView(this).apply { text = progressLabel(estimated); textSize = 12f })
+            box.addView(TextView(this).apply { text = progressLabel(estimated); textSize = 12f; setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)) })
             box.setOnClickListener {
                 exercise.setSelection(exerciseNames.indexOf(name))
                 chartLift = name
