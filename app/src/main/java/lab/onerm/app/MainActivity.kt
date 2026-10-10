@@ -290,6 +290,7 @@ class MainActivity : Activity() {
         val historyExercise = Spinner(this)
         historyExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
         historyPage.addView(historyExercise)
+        historyPage.addView(Button(this).apply { text = "Edit saved records"; setOnClickListener { chooseRecord() } })
         val dateFilter = Spinner(this)
         dateFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
             listOf("All time", "Last 90 days", "Last 30 days"))
@@ -486,6 +487,66 @@ class MainActivity : Activity() {
         renderDashboard()
         history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n\n$actualLabel\n\nEstimated 1RM progression:"
     }
+
+    private fun persistRecords(all: JSONArray) {
+        getSharedPreferences("strength_history", MODE_PRIVATE).edit().putString("records", all.toString()).apply()
+        updateWidget()
+        showHistory()
+        renderDashboard()
+    }
+    private fun recordEditor(index: Int) {
+        val all = records()
+        val original = all.optJSONObject(index) ?: return
+        val input = edit("1RM (kg)", true).apply { setText(original.optDouble("value").toString()) }
+        val holder = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(input)
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(original.optString("exercise") + " · " + original.optString("type", "estimated"))
+            .setView(holder)
+            .setNegativeButton("Cancel", null)
+            .setNeutralButton("Delete") { _, _ ->
+                android.app.AlertDialog.Builder(this).setTitle("Delete this record?")
+                    .setMessage("This cannot be undone. Export a backup first if needed.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Delete") { _, _ ->
+                        val revised = JSONArray()
+                        for (i in 0 until all.length()) if (i != index) revised.put(all.get(i))
+                        persistRecords(revised)
+                    }.show()
+            }
+            .setPositiveButton("Save") { _, _ ->
+                val value = input.text.toString().toDoubleOrNull()
+                if (value == null || !value.isFinite() || value <= 0.0) {
+                    Toast.makeText(this, "Enter a valid weight", Toast.LENGTH_LONG).show()
+                } else {
+                    original.put("value", value)
+                    persistRecords(all)
+                }
+            }.show()
+    }
+    private fun chooseRecord() {
+        val all = records()
+        val name = exercise.selectedItem?.toString() ?: return
+        val indices = (0 until all.length()).filter { all.optJSONObject(it)?.optString("exercise") == name }.reversed()
+        if (indices.isEmpty()) {
+            Toast.makeText(this, "No saved records for this lift", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val formatter = java.text.SimpleDateFormat("dd MMM yyyy", Locale.UK)
+        val labels = indices.map { i ->
+            val entry = all.getJSONObject(i)
+            val kind = if (entry.optString("type") == "actual") "Tested" else "Estimated"
+            "$kind · " + String.format(Locale.UK, "%.1f kg", entry.optDouble("value")) +
+                " · " + formatter.format(java.util.Date(entry.optLong("date")))
+        }
+        android.app.AlertDialog.Builder(this).setTitle("Edit $name records")
+            .setItems(labels.toTypedArray()) { _, which -> recordEditor(indices[which]) }
+            .setNegativeButton("Cancel", null).show()
+    }
+
     private fun edit(hintText: String, decimal: Boolean) = EditText(this).apply {
         hint = hintText
         inputType = if (decimal) InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL else InputType.TYPE_CLASS_NUMBER
