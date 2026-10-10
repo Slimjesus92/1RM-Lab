@@ -35,6 +35,20 @@ class MainActivity : Activity() {
     private lateinit var dashboardCards: LinearLayout
     private lateinit var dashboardChart: ProgressChart
     private lateinit var navButtons: List<Button>
+    private lateinit var weightInput: EditText
+    private lateinit var repsInput: EditText
+    private lateinit var rirInput: EditText
+    private fun recallSet() {
+        if (!::weightInput.isInitialized) return
+        val name = exercise.selectedItem?.toString() ?: return
+        val saved = getSharedPreferences("recent_sets", MODE_PRIVATE).getString(name, null) ?: return
+        try {
+            val obj = JSONObject(saved)
+            weightInput.setText(obj.optString("weight"))
+            repsInput.setText(obj.optString("reps"))
+            rirInput.setText(obj.optString("rir"))
+        } catch (_: Exception) {}
+    }
 
     private var chartLift = "Bench press"
     private fun chosenLifts(): List<String> {
@@ -275,9 +289,9 @@ class MainActivity : Activity() {
                 showHistory()
             }
         }
-        val weight = edit("Weight (kg)", true)
-        val reps = edit("Repetitions (1–15)", false)
-        val rir = edit("RIR (optional, 0–5)", false)
+        val weight = edit("Weight (kg)", true).also { weightInput = it }
+        val reps = edit("Repetitions (1–15)", false).also { repsInput = it }
+        val rir = edit("RIR (optional, 0–5)", false).also { rirInput = it }
         calculator.addView(weight); calculator.addView(reps); calculator.addView(rir)
         val add = Button(this).apply { text = "Add set" }
         calculator.addView(add)
@@ -329,7 +343,7 @@ class MainActivity : Activity() {
         exercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
-                sets.clear(); refresh(); showHistory()
+                sets.clear(); refresh(); showHistory(); recallSet()
                 if (historyExercise.selectedItemPosition != position) historyExercise.setSelection(position)
             }
         }
@@ -343,6 +357,9 @@ class MainActivity : Activity() {
                 val set = LiftSet(w, r, reserve)
                 OneRmEngine.estimate(set)
                 sets.add(set)
+                getSharedPreferences("recent_sets", MODE_PRIVATE).edit()
+                    .putString(exercise.selectedItem.toString(), JSONObject()
+                        .put("weight", w).put("reps", r).put("rir", reserve?.toString() ?: "").toString()).apply()
                 refresh()
             } catch (e: Exception) {
                 Toast.makeText(this, e.message ?: "Check inputs", Toast.LENGTH_LONG).show()
