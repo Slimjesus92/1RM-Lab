@@ -63,7 +63,7 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply {
             addView(root)
             clipToPadding = false
-            fillViewport = true
+            isFillViewport = true
             setBackgroundColor(if (darkMode) Color.rgb(16, 23, 33) else Color.rgb(245, 248, 252))
             val baseBottom = (28 * resources.displayMetrics.density).toInt()
             setPadding(0, 0, 0, baseBottom)
