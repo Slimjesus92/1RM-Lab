@@ -536,7 +536,7 @@ class MainActivity : Activity() {
         val actualLabel = if (actuals.isEmpty()) "No tested 1RM saved"
             else "Tested 1RM personal best: " + format(actuals.maxOrNull() ?: 0.0)
         renderDashboard()
-        history.text = "STRENGTH DASHBOARD — $selected\n\n$estimateLabel\n$recentChange\n\n$actualLabel$testedChange\n\nEstimated 1RM progression:"
+        history.text = "STRENGTH DASHBOARD — $selected\n\n" + strengthInsight(selected, all) + "\n\n$estimateLabel\n$recentChange\n\n$actualLabel$testedChange\n\nEstimated 1RM progression:"
     }
 
 
