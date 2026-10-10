@@ -435,6 +435,7 @@ class MainActivity : Activity() {
         renderDashboard()
         showTab(0)
         chart.darkMode = darkMode
+        refreshTrainingWeights?.invoke()
     }
     private fun records(): JSONArray {
         val raw = getSharedPreferences("strength_history", MODE_PRIVATE).getString("records", "[]") ?: "[]"
