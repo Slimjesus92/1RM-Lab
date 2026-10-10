@@ -147,7 +147,11 @@ class MainActivity : Activity() {
             .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
         val actuals = matching.filter { it.optString("type") == "actual" }
             .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
-        chart.values = estimates
+        chart.points = matching.filter { it.optString("type", "estimated") != "actual" }
+            .mapNotNull {
+                val value = it.optDouble("value")
+                if (value.isFinite() && value > 0) ProgressChart.Point(value, it.optLong("date", System.currentTimeMillis())) else null
+            }
         val format = { value: Double -> String.format(Locale.UK, "%.1f kg", value) }
         val estimateLabel = if (estimates.isEmpty()) "No estimated sessions saved"
             else "Estimated best: " + format(estimates.maxOrNull() ?: 0.0) +
