@@ -69,7 +69,7 @@ class MainActivity : Activity() {
             }
             box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f })
             box.addView(TextView(this).apply {
-                text = if (estimated.isEmpty()) "No estimate yet" else String.format(Locale.UK, "%.1f kg", estimated.maxOrNull())
+                text = if (estimated.isEmpty()) "—" else String.format(Locale.UK, "%.1f kg", estimated.maxOrNull())
                 textSize = 32f; setTypeface(null, Typeface.BOLD)
                 setTextColor(if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175))
             })
@@ -150,7 +150,7 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(4), dp(4), dp(4))
             setBackgroundColor(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
         }
-        navButtons = listOf("Home", "Calculate", "History", "Settings").mapIndexed { index, label ->
+        navButtons = listOf("⌂ Home", "+ Log", "▤ History", "⚙ Settings").mapIndexed { index, label ->
             Button(this).apply {
                 text = label; textSize = 11f; isAllCaps = false
                 setOnClickListener { showTab(index) }
@@ -292,7 +292,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.6.2 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v0.7 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
