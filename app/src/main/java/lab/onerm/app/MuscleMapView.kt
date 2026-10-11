@@ -38,20 +38,60 @@ class MuscleMapView(context: Context) : View(context) {
         Region("glutes",.405f,.655f,.10f,.10f), Region("glutes",.595f,.655f,.10f,.10f),
         Region("hamstrings",.355f,.79f,.082f,.135f,-5f), Region("hamstrings",.645f,.79f,.082f,.135f,5f),
         Region("calves",.365f,.92f,.065f,.07f), Region("calves",.635f,.92f,.065f,.07f))
+    /** Muscle-specific tapered paths replace the previous generic oval markers. */
     private fun drawRegion(canvas: Canvas, region: Region, x: Float, y: Float, w: Float, h: Float, color: Int) {
         val cx = x + w * region.x
         val cy = y + h * region.y
+        val rx = w * region.rx
+        val ry = h * region.ry
         canvas.save()
         canvas.rotate(region.tilt, cx, cy)
+        val path = Path()
+        when (region.key) {
+            "chest" -> {
+                path.moveTo(cx - rx, cy - ry * .75f)
+                path.cubicTo(cx - rx * .3f, cy - ry * 1.2f, cx + rx * .9f, cy - ry * .8f, cx + rx, cy)
+                path.cubicTo(cx + rx * .55f, cy + ry * .8f, cx - rx * .4f, cy + ry, cx - rx, cy + ry * .25f)
+            }
+            "delts", "rear delts" -> {
+                path.moveTo(cx - rx * .95f, cy - ry * .4f)
+                path.cubicTo(cx - rx * .4f, cy - ry * 1.2f, cx + rx * .75f, cy - ry, cx + rx, cy - ry * .15f)
+                path.cubicTo(cx + rx * .55f, cy + ry * .5f, cx + rx * .15f, cy + ry, cx - rx * .35f, cy + ry)
+                path.close()
+            }
+            "quads", "hamstrings", "biceps", "triceps", "forearms", "calves", "adductors", "erectors" -> {
+                path.moveTo(cx - rx * .75f, cy - ry)
+                path.cubicTo(cx - rx * 1.25f, cy - ry * .35f, cx - rx * .95f, cy + ry * .4f, cx - rx * .3f, cy + ry)
+                path.cubicTo(cx + rx * .35f, cy + ry * 1.05f, cx + rx, cy + ry * .25f, cx + rx * .8f, cy - ry * .65f)
+                path.quadTo(cx, cy - ry * 1.15f, cx - rx * .75f, cy - ry)
+            }
+            "lats", "traps", "upper back" -> {
+                path.moveTo(cx - rx, cy - ry)
+                path.quadTo(cx, cy - ry * .65f, cx + rx, cy - ry)
+                path.cubicTo(cx + rx * .8f, cy, cx + rx * .4f, cy + ry * .8f, cx, cy + ry)
+                path.cubicTo(cx - rx * .4f, cy + ry * .8f, cx - rx * .8f, cy, cx - rx, cy - ry)
+            }
+            "glutes" -> {
+                path.moveTo(cx - rx, cy - ry * .65f)
+                path.cubicTo(cx - rx * .3f, cy - ry * 1.1f, cx + rx * .85f, cy - ry * .8f, cx + rx, cy)
+                path.cubicTo(cx + rx * .85f, cy + ry * 1.1f, cx - rx * .45f, cy + ry * 1.2f, cx - rx, cy + ry * .4f)
+            }
+            "core" -> {
+                path.moveTo(cx - rx, cy - ry)
+                path.lineTo(cx + rx, cy - ry)
+                path.lineTo(cx + rx * .75f, cy + ry)
+                path.lineTo(cx - rx * .75f, cy + ry)
+            }
+            else -> path.addOval(cx - rx, cy - ry, cx + rx, cy + ry, Path.Direction.CW)
+        }
+        path.close()
         paint.style = Paint.Style.FILL
         paint.color = color
-        canvas.drawOval(cx - w * region.rx, cy - h * region.ry,
-            cx + w * region.rx, cy + h * region.ry, paint)
+        canvas.drawPath(path, paint)
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = resources.displayMetrics.density * 1.2f
+        paint.strokeWidth = resources.displayMetrics.density * 1.15f
         paint.color = if (dark) Color.rgb(24, 36, 48) else Color.rgb(122, 142, 154)
-        canvas.drawOval(cx - w * region.rx, cy - h * region.ry,
-            cx + w * region.rx, cy + h * region.ry, paint)
+        canvas.drawPath(path, paint)
         paint.style = Paint.Style.FILL
         canvas.restore()
     }
