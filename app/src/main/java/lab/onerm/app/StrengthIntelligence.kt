@@ -13,6 +13,7 @@ object StrengthIntelligence {
         val weightKg: Double,
         val reps: Int,
         val targetRir: Int,
+        val evidence: String,
         val explanation: String,
         val trend: String
     )
@@ -79,11 +80,14 @@ object StrengthIntelligence {
             if (top != null) chronological.add(top)
         }
         val outcomes = mutableListOf<Pair<Double, Boolean>>()
+        var comparablePairs = 0
         for (i in 1 until chronological.size) {
             val before = chronological[i - 1]
             val after = chronological[i]
             val step = after.optDouble("kg") - before.optDouble("kg")
+            if (kotlin.math.abs(after.optInt("reps") - before.optInt("reps")) > 2) continue
             if (step < 0.5 || step > 10.0) continue
+            comparablePairs++
             val beforeReps = before.optInt("reps")
             val afterReps = after.optInt("reps")
             val rirKnown = after.has("rir") && !after.isNull("rir")
@@ -114,6 +118,13 @@ object StrengthIntelligence {
             (!prior.has("rir") || prior.isNull("rir") || prior.optInt("rir") >= 2)
         val increase = hasRir && rir >= 3 && consistent && !repeatedDrop && reps in 3..12
         val target = if (increase) round((kg + recommendedStep) * 2.0) / 2.0 else kg
+        val evidence = when {
+            outcomeStep != null && comparablePairs >= 5 -> "Moderate - outcome-informed"
+            outcomeStep != null -> "Emerging - outcome-informed"
+            personalised && workouts.size >= 3 -> "Emerging - load history"
+            workouts.size >= 2 && hasRir -> "Limited - recent sessions"
+            else -> "Very limited - baseline"
+        }
         val reason = when {
             !hasRir -> "RIR wasn't logged for the reference set; hold weight until effort is clearer."
             repeatedDrop -> "Performance fell across three sessions. Hold the load and review recovery and technique."
@@ -128,6 +139,6 @@ object StrengthIntelligence {
             else -> "Maintain this weight and build consistent reps with around 2 RIR."
         }
         return Suggestion(target, if (increase) (reps - 1).coerceAtLeast(3) else reps,
-            2, reason, trend)
+            2, evidence, reason, trend)
     }
 }
