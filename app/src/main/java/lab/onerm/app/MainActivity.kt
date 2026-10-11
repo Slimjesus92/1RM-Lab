@@ -73,14 +73,14 @@ class MainActivity : Activity() {
     private fun chooseLifts() {
         val chosen = chosenLifts().toMutableSet()
         val flags = exerciseNames.map { it in chosen }.toBooleanArray()
-        android.app.AlertDialog.Builder(this).setTitle("Dashboard exercises")
+        polishedDialog(android.app.AlertDialog.Builder(this).setTitle("Dashboard exercises")
             .setMultiChoiceItems(exerciseNames.toTypedArray(), flags) { _, i, checked ->
                 if (checked) chosen.add(exerciseNames[i]) else chosen.remove(exerciseNames[i])
             }
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
                 if (chosen.isEmpty()) {
-                    Toast.makeText(this, "Choose at least one exercise", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Choose at least one exercise", Toast.LENGTH_SHORT))
                 } else {
                     getSharedPreferences("ui_settings", MODE_PRIVATE).edit()
                         .putString("dashboard_lifts", exerciseNames.filter { it in chosen }.joinToString("|")).apply()
@@ -215,11 +215,11 @@ class MainActivity : Activity() {
             setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
         })
         val scroll = ScrollView(this).apply { addView(content) }
-        android.app.AlertDialog.Builder(this)
+        polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Personal records · Trophy cabinet")
             .setView(scroll)
             .setPositiveButton("Done", null)
-            .show()
+            )
     }
 
     // Strength Level bodyweight tables (kg), accessed October 2026. Linear interpolation between listed rows.
@@ -314,11 +314,11 @@ class MainActivity : Activity() {
                 }
             }
         })
-        android.app.AlertDialog.Builder(this)
+        polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Strength reference settings")
             .setView(content)
             .setPositiveButton("Done", null)
-            .show()
+            )
     }
 
     private fun renderDashboard() {
@@ -630,6 +630,39 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun polishedDialog(builder: android.app.AlertDialog.Builder): android.app.AlertDialog {
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            val window = dialog.window ?: return@setOnShowListener
+            val surface = if (darkMode) Color.rgb(28, 37, 48) else Color.rgb(250, 252, 254)
+            val foreground = if (darkMode) Color.rgb(231, 237, 242) else Color.rgb(27, 42, 60)
+            window.setBackgroundDrawable(rounded(surface, 14))
+            val displayWidth = resources.displayMetrics.widthPixels
+            window.setLayout((displayWidth * 0.92f).toInt(), WindowManager.LayoutParams.WRAP_CONTENT)
+            val titleId = resources.getIdentifier("alertTitle", "id", "android")
+            if (titleId != 0) dialog.findViewById<TextView>(titleId)?.apply {
+                setTextColor(foreground)
+                textSize = 19f
+                setTypeface(null, Typeface.BOLD)
+            }
+            val messageId = android.R.id.message
+            dialog.findViewById<TextView>(messageId)?.apply {
+                setTextColor(foreground)
+                textSize = 14f
+            }
+            for (which in listOf(android.app.AlertDialog.BUTTON_POSITIVE,
+                android.app.AlertDialog.BUTTON_NEGATIVE,
+                android.app.AlertDialog.BUTTON_NEUTRAL)) {
+                dialog.getButton(which)?.let { button ->
+                    styleButton(button, which == android.app.AlertDialog.BUTTON_POSITIVE)
+                    button.setPadding(dp(12), dp(6), dp(12), dp(6))
+                }
+            }
+        }
+        dialog.show()
+        return dialog
+    }
+
     private fun showLiftComparison() {
         val all = records()
         val saved = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
@@ -718,11 +751,11 @@ class MainActivity : Activity() {
             setTextColor(if (darkMode) Color.rgb(180, 194, 207) else Color.rgb(83, 96, 110))
             setPadding(0, dp(12), 0, 0)
         })
-        android.app.AlertDialog.Builder(this)
+        polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Compare lifts")
             .setView(ScrollView(this).apply { addView(content) })
             .setPositiveButton("Done", null)
-            .show()
+            )
     }
 
     private fun showActivityCalendar() {
@@ -789,11 +822,11 @@ class MainActivity : Activity() {
             setTextColor(foreground)
             setPadding(0, dp(12), 0, dp(4))
         })
-        android.app.AlertDialog.Builder(this)
+        polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Training activity calendar")
             .setView(ScrollView(this).apply { addView(content) })
             .setPositiveButton("Done", null)
-            .show()
+            )
     }
 
     private fun styleButton(button: Button, primary: Boolean = false) {
@@ -1069,7 +1102,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.4 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.5 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
@@ -1106,10 +1139,10 @@ class MainActivity : Activity() {
         refreshTrainingWeights?.invoke()
         if (previous == null || value > previous + 0.001) {
             val gain = if (previous == null) "First recorded PB" else String.format(Locale.UK, "+%.1f kg", value - previous)
-            android.app.AlertDialog.Builder(this).setTitle("New personal best!")
+            polishedDialog(android.app.AlertDialog.Builder(this).setTitle("New personal best!")
                 .setMessage(name + " · " + (if (type == "actual") "Tested" else "Estimated") +
                     " 1RM: " + String.format(Locale.UK, "%.1f kg", value) + " (" + gain + ")")
-                .setPositiveButton("Nice!", null).show()
+                .setPositiveButton("Nice!", null))
         }
     }
     private fun updateWidget() {
@@ -1216,11 +1249,11 @@ class MainActivity : Activity() {
                     val value = entry.optDouble("value")
                     require(value.isFinite() && value > 0 && entry.optLong("date") > 0) { "Invalid record" }
                 }
-                android.app.AlertDialog.Builder(this).setTitle("Replace saved history?")
+                polishedDialog(android.app.AlertDialog.Builder(this).setTitle("Replace saved history?")
                     .setMessage("Import " + incoming.length() + " records? Your existing history will be replaced. Export it first to keep a backup.")
                     .setNegativeButton("Cancel", null)
                     .setPositiveButton("Replace") { _, _ -> persistRecords(incoming) }
-                    .show()
+                    )
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Backup error: " + (e.message ?: "Invalid file"), Toast.LENGTH_LONG).show()
@@ -1243,7 +1276,7 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(8), dp(20), 0)
             addView(input)
         }
-        android.app.AlertDialog.Builder(this)
+        polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle(original.optString("exercise") + " · " + original.optString("type", "estimated"))
             .setView(holder)
             .setNegativeButton("Cancel", null)
@@ -1255,7 +1288,7 @@ class MainActivity : Activity() {
                         val revised = JSONArray()
                         for (i in 0 until all.length()) if (i != index) revised.put(all.get(i))
                         persistRecords(revised)
-                    }.show()
+                    })
             }
             .setPositiveButton("Save") { _, _ ->
                 val value = input.text.toString().toDoubleOrNull()
@@ -1282,9 +1315,9 @@ class MainActivity : Activity() {
             "$kind · " + String.format(Locale.UK, "%.1f kg", entry.optDouble("value")) +
                 " · " + formatter.format(java.util.Date(entry.optLong("date")))
         }
-        android.app.AlertDialog.Builder(this).setTitle("Edit $name records")
+        polishedDialog(android.app.AlertDialog.Builder(this).setTitle("Edit $name records")
             .setItems(labels.toTypedArray()) { _, which -> recordEditor(indices[which]) }
-            .setNegativeButton("Cancel", null).show()
+            .setNegativeButton("Cancel", null))
     }
 
     private fun edit(hintText: String, decimal: Boolean) = EditText(this).apply {
