@@ -920,6 +920,31 @@ class MainActivity : Activity() {
             inputs.addView(field, LinearLayout.LayoutParams(0, -2, 1f))
         }
         container.addView(inputs)
+        val warmupToggle = CheckBox(this).apply { text = "Warm-up set (excluded from working volume)" }
+        container.addView(warmupToggle)
+        val timerLabel = workoutText("Rest timer ready", 13f)
+        container.addView(timerLabel)
+        val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        var restDeadline = 0L
+        var timerActive = false
+        val timerUpdate = object : Runnable {
+            override fun run() {
+                if (!timerActive) return
+                val remaining = ((restDeadline - android.os.SystemClock.elapsedRealtime() + 999) / 1000).coerceAtLeast(0)
+                timerLabel.text = if (remaining == 0L) "Rest complete" else "Rest: " +
+                    String.format(Locale.UK, "%d:%02d remaining", remaining / 60, remaining % 60)
+                if (remaining > 0) timerHandler.postDelayed(this, 1000) else timerActive = false
+            }
+        }
+        container.addView(Button(this).apply {
+            text = "Start 2-minute rest timer"
+            setOnClickListener {
+                timerHandler.removeCallbacks(timerUpdate)
+                timerActive = true
+                restDeadline = android.os.SystemClock.elapsedRealtime() + 120000L
+                timerUpdate.run()
+            }
+        })
         fun updateSuggestion() {
             val previous = previousWorkoutSets(lift.selectedItem?.toString() ?: "")
             if (previous.isEmpty()) {
@@ -948,13 +973,14 @@ class MainActivity : Activity() {
             var volume = 0.0
             for (i in 0 until sets.length()) {
                 val set = sets.optJSONObject(i) ?: continue
-                volume += set.optDouble("kg") * set.optInt("reps")
+                if (!set.optBoolean("warmup", false)) volume += set.optDouble("kg") * set.optInt("reps")
                 val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
                 line.addView(workoutText(
                     set.optString("exercise") + " · " +
                     String.format(Locale.UK, "%.1f kg", set.optDouble("kg")) +
                     " × " + set.optInt("reps") +
-                    (if (set.isNull("rir")) "" else " · RIR " + set.optInt("rir")), 13f),
+                    (if (set.isNull("rir")) "" else " · RIR " + set.optInt("rir")) +
+                    (if (set.optBoolean("warmup", false)) " · Warm-up" else ""), 13f),
                     LinearLayout.LayoutParams(0, -2, 1f))
                 line.addView(Button(this).apply {
                     text = "↑"
@@ -1057,12 +1083,13 @@ class MainActivity : Activity() {
                     val set = JSONObject().put("exercise", lift.selectedItem.toString())
                         .put("kg", kg).put("reps", count)
                         .put("rir", reserve ?: JSONObject.NULL)
+                        .put("warmup", warmupToggle.isChecked)
                     val sets = draft.optJSONArray("sets") ?: JSONArray()
                     val previousBest = matchedWeightRepRecords()[set.optString("exercise")]
                         ?.get(matchedWeightKey(kg))
                     sets.put(set)
                     draft.put("sets", sets)
-                    if (previousBest == null || count > previousBest) {
+                    if (!warmupToggle.isChecked && (previousBest == null || count > previousBest)) {
                         Toast.makeText(this@MainActivity,
                             if (previousBest == null) "Potential first rep record — save workout to confirm"
                             else "Potential rep PR: +" + (count - previousBest) + " reps at " + kg + " kg (save workout)",
@@ -1073,6 +1100,7 @@ class MainActivity : Activity() {
                     redraw()
                     reps.text.clear()
                     rir.text.clear()
+                    warmupToggle.isChecked = false
                 }
             }
         })
@@ -1098,6 +1126,10 @@ class MainActivity : Activity() {
             }
             .setPositiveButton("Finish & save", null)
 )
+        workoutDialog.setOnDismissListener {
+            timerActive = false
+            timerHandler.removeCallbacks(timerUpdate)
+        }
         workoutDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
             val sets = draft.optJSONArray("sets") ?: JSONArray()
             if (sets.length() == 0) {
