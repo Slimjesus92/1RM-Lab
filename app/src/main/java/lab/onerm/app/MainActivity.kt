@@ -957,6 +957,59 @@ class MainActivity : Activity() {
                     (if (set.isNull("rir")) "" else " · RIR " + set.optInt("rir")), 13f),
                     LinearLayout.LayoutParams(0, -2, 1f))
                 line.addView(Button(this).apply {
+                    text = "Edit"
+                    setOnClickListener {
+                        val editor = LinearLayout(this@MainActivity).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(dp(18), dp(10), dp(18), dp(8))
+                        }
+                        val kgEdit = edit("Weight (kg)", true).apply {
+                            setText(set.optDouble("kg").toString())
+                        }
+                        val repsEdit = edit("Reps", false).apply {
+                            setText(set.optInt("reps").toString())
+                        }
+                        val rirEdit = edit("RIR (optional)", false).apply {
+                            if (!set.isNull("rir")) setText(set.optInt("rir").toString())
+                        }
+                        editor.addView(kgEdit)
+                        editor.addView(repsEdit)
+                        editor.addView(rirEdit)
+                        polishedDialog(android.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Edit set")
+                            .setView(editor)
+                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Save", null)).also { dialog ->
+                            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+                                .setOnClickListener {
+                                    val newKg = kgEdit.text.toString().toDoubleOrNull()
+                                    val newReps = repsEdit.text.toString().toIntOrNull()
+                                    val newRir = rirEdit.text.toString().trim()
+                                        .takeIf { it.isNotEmpty() }?.toIntOrNull()
+                                    if (newKg == null || !newKg.isFinite() || newKg <= 0 ||
+                                        newKg > 2000 || newReps == null || newReps !in 1..100 ||
+                                        (rirEdit.text.isNotBlank() && (newRir == null || newRir !in 0..10))) {
+                                        Toast.makeText(this@MainActivity, "Check set values", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        set.put("kg", newKg).put("reps", newReps)
+                                            .put("rir", newRir ?: JSONObject.NULL)
+                                        storeDraft(draft)
+                                        redraw()
+                                        dialog.dismiss()
+                                    }
+                                }
+                        }
+                    }
+                })
+                line.addView(Button(this).apply {
+                    text = "Repeat"
+                    setOnClickListener {
+                        sets.put(JSONObject(set.toString()))
+                        storeDraft(draft)
+                        redraw()
+                    }
+                })
+                line.addView(Button(this).apply {
                     text = "Remove"
                     setOnClickListener {
                         val revised = JSONArray()
