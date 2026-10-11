@@ -58,13 +58,14 @@ object StrengthIntelligence {
             }
         }
         val uniqueLoads = allLoads.distinct().sorted()
+        val enoughLoadHistory = allLoads.size >= 6 && uniqueLoads.size >= 3
         val observedSteps = uniqueLoads.zipWithNext { a, b -> b - a }
             .filter { it >= 0.5 && it <= 10.0 }
         val defaultStep = if (exercise == "Squat" || exercise == "Deadlift") 5.0 else 2.5
-        val liftStep = if (uniqueLoads.size >= 3 && observedSteps.size >= 2)
+        val liftStep = if (enoughLoadHistory && observedSteps.size >= 2)
             observedSteps.minOrNull()!!.coerceIn(1.0, defaultStep)
         else defaultStep
-        val personalised = uniqueLoads.size >= 3 && observedSteps.size >= 2
+        val personalised = enoughLoadHistory && observedSteps.size >= 2
         val estimates = workouts.mapNotNull { session ->
             session.maxOfOrNull { it.optDouble("kg") * (1 + it.optInt("reps") / 30.0) }
         }
