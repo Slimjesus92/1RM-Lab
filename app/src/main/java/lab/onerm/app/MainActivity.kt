@@ -826,6 +826,23 @@ class MainActivity : Activity() {
             .setPositiveButton("Done", null))
     }
 
+    private fun muscleMapPanel(name: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(MuscleMapView(this@MainActivity).apply {
+                exerciseName = name
+                dark = darkMode
+            }, LinearLayout.LayoutParams(-1, dp(260)))
+            addView(workoutText(MuscleMapView.description(name), 13f))
+        }
+
+    private fun showMuscleMap(name: String) {
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle(name + " · muscle map")
+            .setView(ScrollView(this).apply { addView(muscleMapPanel(name)) })
+            .setPositiveButton("Done", null))
+    }
+
     private fun showWorkoutLogger() {
         val draft = workoutDraft()
         if (!draft.has("started")) {
@@ -844,6 +861,10 @@ class MainActivity : Activity() {
         container.addView(name)
         val lift = Spinner(this).apply { adapter = spinnerAdapter(exerciseNames) }
         container.addView(lift)
+        container.addView(Button(this).apply {
+            text = "View muscles used"
+            setOnClickListener { showMuscleMap(lift.selectedItem?.toString() ?: "Other") }
+        })
         val suggestion = workoutText("", 13f)
         container.addView(suggestion)
         val inputs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -1016,9 +1037,18 @@ class MainActivity : Activity() {
                             " × " + it.optInt("reps") +
                             (if (it.isNull("rir")) "" else " · RIR " + it.optInt("rir"))
                     }
+                val sessionLifts = (0 until sets.length()).mapNotNull { sets.optJSONObject(it) }
+                    .map { it.optString("exercise") }.distinct()
                 polishedDialog(android.app.AlertDialog.Builder(this)
                     .setTitle(session.optString("name", "Workout"))
                     .setMessage(details)
+                    .setNeutralButton("Muscle map") { _, _ ->
+                        val choices = sessionLifts.toTypedArray()
+                        polishedDialog(android.app.AlertDialog.Builder(this)
+                            .setTitle("Select an exercise")
+                            .setItems(choices) { _, selected -> showMuscleMap(choices[selected]) }
+                            .setNegativeButton("Cancel", null))
+                    }
                     .setPositiveButton("Done", null))
             }
             .setPositiveButton("Done", null))
@@ -1311,6 +1341,10 @@ class MainActivity : Activity() {
         exercise.adapter = spinnerAdapter(names)
         calculator.addView(TextView(this).apply { text = "SELECT LIFT"; textSize = 14f })
         calculator.addView(exercise)
+        calculator.addView(Button(this).apply {
+            text = "View muscles used in selected lift"
+            setOnClickListener { showMuscleMap(exercise.selectedItem?.toString() ?: "Other") }
+        })
         val historyExercise = Spinner(this)
         historyExercise.adapter = spinnerAdapter(names)
         historyExercisePicker = historyExercise
