@@ -29,25 +29,22 @@ object StrengthForecast {
         val sorted = observations(all, exercise)
         if (sorted.size < 4) return null
         val start = sorted.first().first
-        val x = sorted.map { (it.first - start).toDouble() / 86400000.0 }
-        if (x.last() - x.first() < 21.0) return null
-        val y = sorted.map { it.second }
-        val xm = x.average()
-        val ym = y.average()
-        val variance = x.sumOf { (it - xm) * (it - xm) }
-        if (variance <= 0.0) return null
-        val slope = x.indices.sumOf { (x[it] - xm) * (y[it] - ym) } / variance
-        val residual = sqrt(x.indices.sumOf {
-            val fitted = ym + slope * (x[it] - xm)
-            (y[it] - fitted) * (y[it] - fitted)
-        } / (x.size - 2))
-        val current = y.last()
-        val horizon = 28.0
-        val projected = (current + slope * horizon).coerceIn(current * 0.85, current * 1.15)
-        val band = maxOf(residual * 2.0, current * 0.05)
-        return Forecast(current, projected, (projected - band).coerceAtLeast(0.0),
-            projected + band, sorted.size,
-            "Exploratory 4-week projection from recent session-best Epley estimates. " +
+        val history = sorted.map { (stamp, estimate) ->
+            lab.onerm.StrengthTrend.Observation((stamp - start).toDouble() / 86400000.0, estimate)
+        }
+        val projection = lab.onerm.StrengthTrend.project(history) ?: return null
+        return Forecast(projection.current, projection.projected, projection.low,
+            projection.high, sorted.size,
+            "Exploratory 4-week projection from session-best Epley estimates. " +
             "Range reflects historical variability (minimum ±5%), not a validated prediction interval.")
+    }
+
+    fun backtest(all: JSONArray, exercise: String): lab.onerm.StrengthTrend.Backtest? {
+        val sorted = observations(all, exercise)
+        if (sorted.isEmpty()) return null
+        val start = sorted.first().first
+        return lab.onerm.StrengthTrend.backtest(sorted.map { (stamp, estimate) ->
+            lab.onerm.StrengthTrend.Observation((stamp - start).toDouble() / 86400000.0, estimate)
+        })
     }
 }
