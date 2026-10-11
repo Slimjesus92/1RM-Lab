@@ -514,12 +514,12 @@ class MainActivity : Activity() {
         val section = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         section.addView(TextView(this).apply { text = "Training weights"; textSize = 20f })
         val picker = Spinner(this)
-        picker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, exerciseNames)
+        picker.adapter = spinnerAdapter(exerciseNames)
         section.addView(picker)
         section.addView(TextView(this).apply { text = "Strength baseline"; textSize = 15f })
         val baselinePicker = Spinner(this)
         val baselineOptions = listOf("All-time estimated PB", "Recent estimate (last 30 days)")
-        baselinePicker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, baselineOptions)
+        baselinePicker.adapter = spinnerAdapter(baselineOptions)
         section.addView(baselinePicker)
         val baselinePrefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
         baselinePicker.setSelection(if (baselinePrefs.getString("training_baseline", "best") == "recent") 1 else 0)
@@ -1308,17 +1308,16 @@ class MainActivity : Activity() {
 
         exercise = Spinner(this)
         val names = exerciseNames
-        exercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        exercise.adapter = spinnerAdapter(names)
         calculator.addView(TextView(this).apply { text = "SELECT LIFT"; textSize = 14f })
         calculator.addView(exercise)
         val historyExercise = Spinner(this)
-        historyExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        historyExercise.adapter = spinnerAdapter(names)
         historyExercisePicker = historyExercise
         historyPage.addView(historyExercise)
         historyPage.addView(Button(this).apply { text = "Edit saved records"; setOnClickListener { chooseRecord() } })
         val dateFilter = Spinner(this)
-        dateFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
-            listOf("All time", "Last 90 days", "Last 30 days"))
+        dateFilter.adapter = spinnerAdapter(listOf("All time", "Last 90 days", "Last 30 days"))
         historyPage.addView(dateFilter)
         dateFilter.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
@@ -1364,7 +1363,7 @@ class MainActivity : Activity() {
         })
         settingsPage.addView(TextView(this).apply { text = "WIDGET EXERCISE"; textSize = 18f })
         widgetExercise = Spinner(this)
-        widgetExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
+        widgetExercise.adapter = spinnerAdapter(names)
         settingsPage.addView(widgetExercise)
         val widgetPrefs = getSharedPreferences("last_estimate", MODE_PRIVATE)
         widgetExercise.setSelection(names.indexOf(widgetPrefs.getString("widget_exercise", names[0])).coerceAtLeast(0))
@@ -1441,7 +1440,7 @@ class MainActivity : Activity() {
         settingsPage.addView(TextView(this).apply { text = "APPEARANCE"; textSize = 20f; setPadding(0, 28, 0, 8) })
         val themes = listOf("Dark / Performance", "Light / Scientific")
         val themeSpinner = Spinner(this)
-        themeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, themes)
+        themeSpinner.adapter = spinnerAdapter(themes)
         settingsPage.addView(themeSpinner)
         themeSpinner.setSelection(if (darkMode) 0 else 1)
         themeSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
