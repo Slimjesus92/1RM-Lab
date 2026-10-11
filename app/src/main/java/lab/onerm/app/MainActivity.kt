@@ -852,6 +852,32 @@ class MainActivity : Activity() {
             }
             addView(legend)
             addView(workoutText(MuscleMapView.description(name), 13f))
+            val latest = completedWorkouts()
+            val recent = mutableListOf<String>()
+            for (i in latest.length() - 1 downTo 0) {
+                val session = latest.optJSONObject(i) ?: continue
+                val sessionSets = session.optJSONArray("sets") ?: continue
+                for (j in 0 until sessionSets.length()) {
+                    val set = sessionSets.optJSONObject(j) ?: continue
+                    if (set.optString("exercise") == name) {
+                        recent.add(String.format(Locale.UK, "%.1f kg × %d reps",
+                            set.optDouble("kg"), set.optInt("reps")))
+                    }
+                }
+                if (recent.size >= 3) break
+            }
+            addView(workoutText("RECENT WORKING SETS", 12f))
+            addView(workoutText(if (recent.isEmpty()) "No logged working sets yet."
+                else recent.takeLast(4).asReversed().joinToString("  ·  "), 13f))
+            addView(workoutText("EXERCISE NOTES", 12f))
+            addView(workoutText(when (name) {
+                "Bench press" -> "Set your upper back firmly, keep feet planted, and lower the bar under control to a consistent touch point."
+                "Squat" -> "Brace before descending, keep the bar balanced over midfoot, and use a depth you can control."
+                "Deadlift" -> "Brace firmly, keep the bar close, and push through the floor without jerking the weight."
+                "Overhead press" -> "Brace your trunk and glutes, press in a controlled path, and finish with the bar balanced overhead."
+                "Barbell row" -> "Keep your torso angle consistent and pull without using excessive momentum."
+                else -> "Use controlled technique and a comfortable range of motion."
+            }, 13f))
             addView(workoutText("Anatomical artwork: Ryan Graves (CC BY 4.0). Highlighting adapted for 1RM Lab. https://creativecommons.org/licenses/by/4.0/", 11f))
         }
 
