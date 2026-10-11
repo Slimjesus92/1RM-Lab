@@ -1243,6 +1243,51 @@ class MainActivity : Activity() {
             .setPositiveButton("Done", null))
     }
 
+    private fun showStrengthIntelligenceDashboard() {
+        val all = completedWorkouts()
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        panel.addView(workoutText("PERSONALISED STRENGTH INTELLIGENCE", 18f))
+        panel.addView(workoutText(
+            "Recommendations use completed working sets, recorded reps and RIR. " +
+            "Evidence labels describe available history, not the probability of success.", 12f))
+        var available = 0
+        for (lift in exerciseNames.filter { it != "Other" }) {
+            panel.addView(workoutText(lift.uppercase(Locale.UK), 16f))
+            val suggestion = StrengthIntelligence.suggest(all, lift)
+            if (suggestion == null) {
+                panel.addView(workoutText("No completed working sets recorded yet.", 13f))
+                continue
+            }
+            available++
+            panel.addView(workoutText(String.format(Locale.UK,
+                "NEXT SESSION  %.1f kg × %d reps · RIR %d",
+                suggestion.weightKg, suggestion.reps, suggestion.targetRir), 15f))
+            panel.addView(workoutText("Evidence: " + suggestion.evidence +
+                "\nTrend: " + suggestion.trend + "\n" + suggestion.explanation, 13f))
+            val observations = StrengthForecast.observations(all, lift)
+            if (observations.size >= 2) {
+                panel.addView(StrengthForecastChart(this).apply {
+                    darkMode = this@MainActivity.darkMode
+                    this.observations = observations
+                    forecast = StrengthForecast.calculate(all, lift)
+                })
+            }
+        }
+        if (available == 0) panel.addView(workoutText(
+            "Log and finish a workout to unlock lift-specific coaching.", 13f))
+        panel.addView(Button(this).apply {
+            text = "Explore 4-week strength forecasts"
+            setOnClickListener { showStrengthForecast() }
+        })
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle("Strength Intelligence · v5.0")
+            .setView(ScrollView(this).apply { addView(panel) })
+            .setPositiveButton("Done", null))
+    }
+
     private fun showWorkoutInsights() {
         val all = completedWorkouts()
         val sessions = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
@@ -1275,7 +1320,7 @@ class MainActivity : Activity() {
                 " volume\n\n" +
                 (if (lines.isEmpty()) "Complete a workout to see insights." else lines.joinToString("\n\n")) +
                 "\n\nVolume = weight × reps. See Rep records for true best reps at each logged weight.")
-            .setNeutralButton("Strength forecast") { _, _ -> showStrengthForecast() }
+            .setNeutralButton("Strength Intelligence") { _, _ -> showStrengthIntelligenceDashboard() }
             .setPositiveButton("Done", null))
     }
 
