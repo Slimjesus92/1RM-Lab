@@ -963,7 +963,7 @@ class MainActivity : Activity() {
             if (intelligent != null) {
                 suggestion.text = "STRENGTH INTELLIGENCE · " + intelligent.trend +
                     "\nNext session: " + String.format(Locale.UK, "%.1f kg × %d", intelligent.weightKg, intelligent.reps) +
-                    " · target RIR " + intelligent.targetRir + "\n" + intelligent.explanation
+                    " · target RIR " + intelligent.targetRir + "\nEvidence: " + intelligent.evidence + "\n" + intelligent.explanation
                 weight.setText(String.format(Locale.UK, "%.1f", intelligent.weightKg))
                 reps.setText(intelligent.reps.toString())
                 rir.setText(intelligent.targetRir.toString())
