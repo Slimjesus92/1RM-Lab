@@ -9,7 +9,7 @@ import kotlin.math.sqrt
 object StrengthForecast {
     data class Forecast(val current: Double, val projected: Double, val low: Double,
         val high: Double, val sessions: Int, val explanation: String)
-    fun calculate(all: JSONArray, exercise: String): Forecast? {
+    fun observations(all: JSONArray, exercise: String): List<Pair<Long, Double>> {
         val observations = mutableListOf<Pair<Long, Double>>()
         for (i in 0 until all.length()) {
             val session = all.optJSONObject(i) ?: continue
@@ -22,7 +22,11 @@ object StrengthForecast {
                 .maxOfOrNull { it.optDouble("kg") * (1.0 + it.optInt("reps") / 30.0) }
             if (best != null) observations.add(stamp to best)
         }
-        val sorted = observations.sortedBy { it.first }.takeLast(12)
+        return observations.sortedBy { it.first }.takeLast(12)
+    }
+
+    fun calculate(all: JSONArray, exercise: String): Forecast? {
+        val sorted = observations(all, exercise)
         if (sorted.size < 4) return null
         val start = sorted.first().first
         val x = sorted.map { (it.first - start).toDouble() / 86400000.0 }
