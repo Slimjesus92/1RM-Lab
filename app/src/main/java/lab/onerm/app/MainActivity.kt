@@ -610,23 +610,25 @@ class MainActivity : Activity() {
         return section
     }
     private fun spinnerAdapter(options: List<String>): ArrayAdapter<String> {
-        val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
-        val surface = if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE
+        val foreground = if (darkMode) Color.rgb(238, 244, 249) else Color.rgb(27, 42, 60)
+        val surface = if (darkMode) Color.rgb(35, 46, 58) else Color.rgb(238, 243, 247)
         return object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, options) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val label = super.getView(position, convertView, parent) as TextView
-                label.setTextColor(foreground)
-                label.setBackgroundColor(surface)
-                label.setPadding(dp(12), dp(12), dp(12), dp(12))
-                return label
-            }
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val label = super.getDropDownView(position, convertView, parent) as TextView
-                label.setTextColor(foreground)
-                label.setBackgroundColor(surface)
-                label.setPadding(dp(14), dp(12), dp(14), dp(12))
-                return label
-            }
+            private fun optionView(position: Int, parent: ViewGroup, dropdown: Boolean): TextView =
+                TextView(this@MainActivity).apply {
+                    text = getItem(position) ?: ""
+                    setTextColor(foreground)
+                    setBackgroundColor(surface)
+                    textSize = 16f
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    minHeight = dp(52)
+                    setPadding(dp(16), dp(10), dp(if (dropdown) 16 else 40), dp(10))
+                    layoutParams = android.widget.AbsListView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(52))
+                }
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                optionView(position, parent, false)
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
+                optionView(position, parent, true)
         }
     }
 
@@ -848,6 +850,12 @@ class MainActivity : Activity() {
         val accent = if (darkMode) Color.rgb(125, 176, 198) else Color.rgb(42, 92, 128)
         when (view) {
             is Button -> styleButton(view, view.tag == "primary_action")
+            is Spinner -> {
+                view.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    if (darkMode) Color.rgb(238, 244, 249) else Color.rgb(27, 42, 60))
+                view.setPopupBackgroundDrawable(rounded(
+                    if (darkMode) Color.rgb(35, 46, 58) else Color.rgb(238, 243, 247), 8))
+            }
             is EditText -> {
                 view.setTextColor(foreground)
                 view.setHintTextColor(if (darkMode) Color.rgb(154, 169, 182) else Color.rgb(99, 112, 124))
