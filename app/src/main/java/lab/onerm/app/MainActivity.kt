@@ -781,6 +781,51 @@ class MainActivity : Activity() {
             setPadding(dp(6), dp(8), dp(6), dp(8))
         }
 
+    private fun allWorkoutSets(): List<JSONObject> {
+        val sessions = completedWorkouts()
+        return (0 until sessions.length()).mapNotNull { sessions.optJSONObject(it) }
+            .flatMap { session ->
+                val sets = session.optJSONArray("sets") ?: JSONArray()
+                (0 until sets.length()).mapNotNull { sets.optJSONObject(it) }
+            }
+    }
+
+    private fun matchedWeightKey(kg: Double): Long = kotlin.math.round(kg * 1000.0).toLong()
+
+    private fun previousWorkoutSets(exerciseName: String): List<JSONObject> {
+        val sessions = completedWorkouts()
+        for (i in sessions.length() - 1 downTo 0) {
+            val sets = sessions.optJSONObject(i)?.optJSONArray("sets") ?: continue
+            val matching = (0 until sets.length()).mapNotNull { sets.optJSONObject(it) }
+                .filter { it.optString("exercise") == exerciseName }
+            if (matching.isNotEmpty()) return matching
+        }
+        return emptyList()
+    }
+
+    private fun matchedWeightRepRecords(): Map<String, Map<Long, Int>> =
+        allWorkoutSets().groupBy { it.optString("exercise") }
+            .mapValues { (_, sets) ->
+                sets.groupBy { matchedWeightKey(it.optDouble("kg")) }
+                    .mapValues { (_, group) -> group.maxOf { it.optInt("reps") } }
+            }
+
+    private fun showRepRecords() {
+        val records = matchedWeightRepRecords()
+        val lines = records.toSortedMap().flatMap { (exercise, weights) ->
+            listOf(exercise.uppercase(Locale.UK)) +
+                weights.toSortedMap(compareByDescending { it }).map { (key, reps) ->
+                    String.format(Locale.UK, "%.1f kg × %d reps", key / 1000.0, reps)
+                } + listOf("")
+        }
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle("Rep records · matched weights")
+            .setMessage(if (lines.isEmpty()) "Finish a workout to establish rep records."
+                else lines.joinToString("\n") +
+                    "\nRecords compare repetitions at the same exercise and exact logged weight.")
+            .setPositiveButton("Done", null))
+    }
+
     private fun showWorkoutLogger() {
         val draft = workoutDraft()
         if (!draft.has("started")) {
@@ -799,6 +844,8 @@ class MainActivity : Activity() {
         container.addView(name)
         val lift = Spinner(this).apply { adapter = spinnerAdapter(exerciseNames) }
         container.addView(lift)
+        val suggestion = workoutText("", 13f)
+        container.addView(suggestion)
         val inputs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val weight = edit("kg", true)
         val reps = edit("reps", false)
@@ -807,6 +854,26 @@ class MainActivity : Activity() {
             inputs.addView(field, LinearLayout.LayoutParams(0, -2, 1f))
         }
         container.addView(inputs)
+        fun updateSuggestion() {
+            val previous = previousWorkoutSets(lift.selectedItem?.toString() ?: "")
+            if (previous.isEmpty()) {
+                suggestion.text = "No previous completed session for this lift."
+            } else {
+                suggestion.text = "Previous session: " + previous.joinToString("  ·  ") {
+                    String.format(Locale.UK, "%.1f kg × %d", it.optDouble("kg"), it.optInt("reps"))
+                }
+                val last = previous.last()
+                weight.setText(String.format(Locale.UK, "%.1f", last.optDouble("kg")))
+                reps.setText(last.optInt("reps").toString())
+                if (!last.isNull("rir")) rir.setText(last.optInt("rir").toString()) else rir.text.clear()
+            }
+        }
+        lift.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                updateSuggestion()
+            }
+        }
         val summary = workoutText("", 14f)
         val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         fun redraw() {
@@ -855,8 +922,16 @@ class MainActivity : Activity() {
                         .put("kg", kg).put("reps", count)
                         .put("rir", reserve ?: JSONObject.NULL)
                     val sets = draft.optJSONArray("sets") ?: JSONArray()
+                    val previousBest = matchedWeightRepRecords()
+                        [set.optString("exercise")]?.get(matchedWeightKey(kg))
                     sets.put(set)
                     draft.put("sets", sets)
+                    if (previousBest == null || count > previousBest) {
+                        Toast.makeText(this@MainActivity,
+                            if (previousBest == null) "New weight-specific rep record!"
+                            else "Rep PR! +" + (count - previousBest) + " reps at " + kg + " kg",
+                            Toast.LENGTH_SHORT).show()
+                    }
                     draft.put("name", name.text.toString())
                     storeDraft(draft)
                     redraw()
@@ -976,7 +1051,7 @@ class MainActivity : Activity() {
                 String.format(Locale.UK, "%.0f kg", totalVolume) +
                 " volume\n\n" +
                 (if (lines.isEmpty()) "Complete a workout to see insights." else lines.joinToString("\n\n")) +
-                "\n\nVolume = weight × reps. Rep counts and heaviest sets are descriptive, not rep PRs at matched weights.")
+                "\n\nVolume = weight × reps. See Rep records for true best reps at each logged weight.")
             .setPositiveButton("Done", null))
     }
 
@@ -1201,6 +1276,10 @@ class MainActivity : Activity() {
         })
         calculator.addView(TextView(this).apply { text = "1. Select a lift   2. Enter a set   3. Save your session"; textSize = 14f })
         historyPage.addView(title("Training history"))
+        historyPage.addView(Button(this).apply {
+            text = "Rep records by exercise & weight"
+            setOnClickListener { showRepRecords() }
+        })
         historyPage.addView(Button(this).apply {
             text = "Completed workouts"
             setOnClickListener { showWorkoutHistory() }
