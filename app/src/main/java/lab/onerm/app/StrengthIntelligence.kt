@@ -66,6 +66,41 @@ object StrengthIntelligence {
             observedSteps.minOrNull()!!.coerceIn(1.0, defaultStep)
         else defaultStep
         val personalised = enoughLoadHistory && observedSteps.size >= 2
+        // Review actual load increases between consecutive completed sessions.
+        // A step is treated as tolerated only when reps stay reasonably close
+        // and reported effort does not indicate an all-out grind.
+        val chronological = mutableListOf<JSONObject>()
+        for (i in 0 until sessions.length()) {
+            val sets = sessions.optJSONObject(i)?.optJSONArray("sets") ?: continue
+            val candidates = (0 until sets.length()).mapNotNull { sets.optJSONObject(it) }
+                .filter { it.optString("exercise") == exercise && !it.optBoolean("warmup", false) &&
+                    it.optDouble("kg") > 0 && it.optInt("reps") in 3..12 }
+            val top = candidates.maxByOrNull { it.optDouble("kg") * (1 + it.optInt("reps") / 30.0) }
+            if (top != null) chronological.add(top)
+        }
+        val outcomes = mutableListOf<Pair<Double, Boolean>>()
+        for (i in 1 until chronological.size) {
+            val before = chronological[i - 1]
+            val after = chronological[i]
+            val step = after.optDouble("kg") - before.optDouble("kg")
+            if (step < 0.5 || step > 10.0) continue
+            val beforeReps = before.optInt("reps")
+            val afterReps = after.optInt("reps")
+            val rirKnown = after.has("rir") && !after.isNull("rir")
+            val effortOkay = rirKnown && after.optInt("rir") >= 2
+            val tolerated = afterReps >= beforeReps - 2 && effortOkay
+            if (rirKnown) outcomes.add(step to tolerated)
+        }
+        val successes = outcomes.filter { it.second }
+        val failures = outcomes.filterNot { it.second }
+        val learnedStep = successes.map { it.first }
+            .filter { candidate -> failures.none { !it.second && it.first <= candidate + 0.25 } }
+            .minOrNull()
+        val hasOutcomeEvidence = outcomes.size >= 3 && successes.size >= 2
+        val outcomeStep = if (hasOutcomeEvidence && learnedStep != null)
+            learnedStep.coerceIn(1.0, defaultStep) else null
+        val recommendedStep = outcomeStep ?: liftStep
+
         val estimates = workouts.mapNotNull { session ->
             session.maxOfOrNull { it.optDouble("kg") * (1 + it.optInt("reps") / 30.0) }
         }
@@ -78,13 +113,15 @@ object StrengthIntelligence {
             prior.optInt("reps") >= reps &&
             (!prior.has("rir") || prior.isNull("rir") || prior.optInt("rir") >= 2)
         val increase = hasRir && rir >= 3 && consistent && !repeatedDrop && reps in 3..12
-        val target = if (increase) round((kg + liftStep) * 2.0) / 2.0 else kg
+        val target = if (increase) round((kg + recommendedStep) * 2.0) / 2.0 else kg
         val reason = when {
             !hasRir -> "RIR wasn't logged for the reference set; hold weight until effort is clearer."
             repeatedDrop -> "Performance fell across three sessions. Hold the load and review recovery and technique."
             increase -> "Comparable sessions and at least 3 RIR support a cautious " +
-                String.format(java.util.Locale.UK, "%.1f kg", liftStep) +
-                (if (personalised) " step inferred from your logged loads." else " default step for this lift.")
+                String.format(java.util.Locale.UK, "%.1f kg", recommendedStep) +
+                (if (outcomeStep != null) " step supported by previously tolerated increases (" + successes.size + " examples)."
+                 else if (personalised) " step inferred from your logged loads; outcome evidence is limited."
+                 else " default step for this lift.")
             stalled -> "Performance has been similar across three sessions. Hold the load and aim to add a rep."
             rir <= 1 -> "Last set was close to failure; repeat the load before increasing."
             workouts.size < 2 -> "Only one session available; establish a repeatable baseline first."
