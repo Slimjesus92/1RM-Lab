@@ -608,6 +608,101 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun showLiftComparison() {
+        val all = records()
+        val saved = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(10), dp(18), dp(12))
+        }
+        val selectors = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val left = Spinner(this).apply { adapter = spinnerAdapter(exerciseNames) }
+        val right = Spinner(this).apply {
+            adapter = spinnerAdapter(exerciseNames)
+            setSelection(2)
+        }
+        selectors.addView(left, LinearLayout.LayoutParams(0, -2, 1f))
+        selectors.addView(right, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(selectors)
+        val output = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(output)
+        val render = {
+            output.removeAllViews()
+            val names = listOf(left.selectedItem.toString(), right.selectedItem.toString())
+            val cutoff = System.currentTimeMillis() - 90L * 86400000L
+            val summaries = names.map { name ->
+                val entries = saved.filter { it.optString("exercise") == name &&
+                    it.optString("type", "estimated") != "actual" }
+                    .filter { it.optDouble("value").let { v -> v.isFinite() && v > 0.0 } }
+                    .sortedBy { it.optLong("date") }
+                val allTime = entries.maxOfOrNull { it.optDouble("value") }
+                val recent = entries.filter { it.optLong("date") >= cutoff }
+                val latest = entries.lastOrNull()?.optDouble("value")
+                val early = recent.take(2).map { it.optDouble("value") }
+                val late = recent.takeLast(2).map { it.optDouble("value") }
+                val change = if (recent.size >= 4 && early.isNotEmpty() && late.isNotEmpty()) {
+                    val start = early.average()
+                    if (start > 0.0) (late.average() / start - 1.0) * 100.0 else null
+                } else null
+                Triple(allTime, latest, change)
+            }
+            for (i in names.indices) {
+                val (best, latest, change) = summaries[i]
+                val card = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(14), dp(14), dp(14), dp(14))
+                    background = rounded(if (darkMode) Color.rgb(28, 37, 48) else Color.WHITE, 12)
+                }
+                card.addView(TextView(this).apply {
+                    text = names[i].uppercase(Locale.UK)
+                    textSize = 12f
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(if (darkMode) Color.rgb(180, 194, 207) else Color.rgb(83, 96, 110))
+                })
+                card.addView(TextView(this).apply {
+                    text = "BEST  " + (best?.let { String.format(Locale.UK, "%.1f kg", it) } ?: "—") +
+                        "\nLATEST  " + (latest?.let { String.format(Locale.UK, "%.1f kg", it) } ?: "—") +
+                        "\n90-DAY TREND  " + (change?.let { String.format(Locale.UK, "%+.1f%%", it) } ?: "Not enough data")
+                    textSize = 16f
+                    setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+                })
+                output.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+            }
+            val a = summaries[0].first
+            val b = summaries[1].first
+            output.addView(TextView(this).apply {
+                text = if (names[0] == names[1]) "Choose two different lifts to compare."
+                    else if (a != null && b != null)
+                        "Estimated PB difference: " + String.format(Locale.UK, "%.1f kg", kotlin.math.abs(a - b)) +
+                        " · " + (if (a >= b) names[0] else names[1]) + " is higher."
+                    else "Save estimated 1RMs for both lifts to compare their bests."
+                textSize = 13f
+                setTextColor(if (darkMode) Color.rgb(180, 194, 207) else Color.rgb(83, 96, 110))
+                setPadding(0, dp(16), 0, dp(8))
+            })
+        }
+        val listener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                render()
+            }
+        }
+        left.onItemSelectedListener = listener
+        right.onItemSelectedListener = listener
+        render()
+        content.addView(TextView(this).apply {
+            text = "Comparisons use estimated 1RM records. The 90-day trend compares the first and last two saved estimates in that window; four records are required. Different exercises naturally have different strength ranges."
+            textSize = 12f
+            setTextColor(if (darkMode) Color.rgb(180, 194, 207) else Color.rgb(83, 96, 110))
+            setPadding(0, dp(12), 0, 0)
+        })
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Compare lifts")
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton("Done", null)
+            .show()
+    }
+
     private fun showActivityCalendar() {
         val all = records()
         val today = java.time.LocalDate.now()
@@ -774,6 +869,10 @@ class MainActivity : Activity() {
         calculator.addView(TextView(this).apply { text = "1. Select a lift   2. Enter a set   3. Save your session"; textSize = 14f })
         historyPage.addView(title("Training history"))
         historyPage.addView(Button(this).apply {
+            text = "Compare two lifts"
+            setOnClickListener { showLiftComparison() }
+        })
+        historyPage.addView(Button(this).apply {
             text = "View training activity calendar"
             setOnClickListener { showActivityCalendar() }
         })
@@ -927,7 +1026,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.1 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.2 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
