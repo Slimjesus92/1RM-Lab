@@ -9,6 +9,9 @@ class AnatomyWebView(context: Context, exercise: String, dark: Boolean) : WebVie
         settings.javaScriptEnabled = false
         settings.allowFileAccess = false
         settings.allowContentAccess = false
+        settings.builtInZoomControls = true
+        settings.displayZoomControls = false
+        settings.setSupportZoom(true)
         isVerticalScrollBarEnabled = false
         isHorizontalScrollBarEnabled = false
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
