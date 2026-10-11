@@ -990,6 +990,13 @@ class MainActivity : Activity() {
                 else java.time.Instant.ofEpochMilli(stamp)
                     .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
             }.toSet()
+        val sessions = completedWorkouts()
+        val workouts = (0 until sessions.length()).mapNotNull { sessions.optJSONObject(it) }
+        val workoutDates = workouts.mapNotNull {
+            val stamp = it.optLong("finished", -1L)
+            if (stamp <= 0) null else java.time.Instant.ofEpochMilli(stamp)
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        }.toSet()
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(8), dp(14), dp(8))
@@ -999,10 +1006,10 @@ class MainActivity : Activity() {
         for (offset in 2 downTo 0) {
             val month = today.withDayOfMonth(1).minusMonths(offset.toLong())
             val monthDays = month.lengthOfMonth()
-            val logged = (1..monthDays).count { month.withDayOfMonth(it) in days }
+            val logged = (1..monthDays).count { month.withDayOfMonth(it) in workoutDates }
             content.addView(TextView(this).apply {
                 text = month.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.UK) +
-                    " " + month.year + " · " + logged + " days with saved lifts"
+                    " " + month.year + " · " + logged + " workout days"
                 textSize = 16f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(foreground)
@@ -1023,13 +1030,35 @@ class MainActivity : Activity() {
                 for (weekday in 0..6) {
                     val number = week * 7 + weekday - firstOffset + 1
                     val date = if (number in 1..monthDays) month.withDayOfMonth(number) else null
-                    val recorded = date != null && date in days
+                    val recorded = date != null && date in workoutDates
+                    val legacy = date != null && date in days
                     val cell = TextView(this).apply {
                         text = date?.dayOfMonth?.toString() ?: ""
                         gravity = android.view.Gravity.CENTER
                         textSize = 13f
-                        setTextColor(if (recorded) Color.BLACK else foreground)
+                        setTextColor(if (recorded || legacy) Color.BLACK else foreground)
                         if (recorded) background = rounded(active, 10)
+                        else if (legacy) background = rounded(Color.rgb(125, 176, 198), 10)
+                        if (date != null && (recorded || legacy)) setOnClickListener {
+                            val matches = workouts.filter { session ->
+                                val stamp = session.optLong("finished", -1L)
+                                stamp > 0 && java.time.Instant.ofEpochMilli(stamp)
+                                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate() == date
+                            }
+                            val description = matches.joinToString("\n\n") { session ->
+                                val sets = session.optJSONArray("sets") ?: JSONArray()
+                                val volume = (0 until sets.length()).sumOf { i ->
+                                    val set = sets.optJSONObject(i)
+                                    (set?.optDouble("kg") ?: 0.0) * (set?.optInt("reps") ?: 0)
+                                }
+                                session.optString("name", "Workout") + " · " + sets.length() +
+                                    " sets · " + String.format(Locale.UK, "%.0f kg volume", volume)
+                            }
+                            polishedDialog(android.app.AlertDialog.Builder(this@MainActivity)
+                                .setTitle(date.toString())
+                                .setMessage(if (description.isEmpty()) "Saved legacy 1RM record(s) on this date." else description)
+                                .setPositiveButton("Done", null))
+                        }
                     }
                     row.addView(cell, LinearLayout.LayoutParams(0, dp(38), 1f).apply {
                         setMargins(dp(2), dp(2), dp(2), dp(2))
@@ -1039,7 +1068,7 @@ class MainActivity : Activity() {
             }
         }
         content.addView(TextView(this).apply {
-            text = "Gold = at least one saved estimated or tested 1RM that day. This is a logging calendar, not a complete workout attendance record."
+            text = "Gold = completed workout. Blue = legacy 1RM record without a completed workout. Tap a highlighted date for details."
             textSize = 12f
             setTextColor(foreground)
             setPadding(0, dp(12), 0, dp(4))
