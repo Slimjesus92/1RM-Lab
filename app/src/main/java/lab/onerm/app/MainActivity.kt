@@ -760,6 +760,226 @@ class MainActivity : Activity() {
             )
     }
 
+    private val workoutPrefs get() = getSharedPreferences("workout_sessions_v1", MODE_PRIVATE)
+    private fun completedWorkouts(): JSONArray =
+        try { JSONArray(workoutPrefs.getString("completed", "[]") ?: "[]") }
+        catch (_: Exception) { JSONArray() }
+
+    private fun workoutDraft(): JSONObject =
+        try { JSONObject(workoutPrefs.getString("draft", "{}") ?: "{}") }
+        catch (_: Exception) { JSONObject() }
+
+    private fun storeDraft(draft: JSONObject) {
+        workoutPrefs.edit().putString("draft", draft.toString()).apply()
+    }
+
+    private fun workoutText(label: String, size: Float = 14f): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = size
+            setTextColor(if (darkMode) Color.rgb(231, 237, 242) else Color.rgb(27, 42, 60))
+            setPadding(dp(6), dp(8), dp(6), dp(8))
+        }
+
+    private fun showWorkoutLogger() {
+        val draft = workoutDraft()
+        if (!draft.has("started")) {
+            draft.put("started", System.currentTimeMillis())
+            draft.put("sets", JSONArray())
+            storeDraft(draft)
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        val name = edit("Session name (optional)", false).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setText(draft.optString("name", ""))
+        }
+        container.addView(name)
+        val lift = Spinner(this).apply { adapter = spinnerAdapter(exerciseNames) }
+        container.addView(lift)
+        val inputs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val weight = edit("kg", true)
+        val reps = edit("reps", false)
+        val rir = edit("RIR", false)
+        for (field in listOf(weight, reps, rir)) {
+            inputs.addView(field, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        container.addView(inputs)
+        val summary = workoutText("", 14f)
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun redraw() {
+            list.removeAllViews()
+            val sets = draft.optJSONArray("sets") ?: JSONArray()
+            var volume = 0.0
+            for (i in 0 until sets.length()) {
+                val set = sets.optJSONObject(i) ?: continue
+                volume += set.optDouble("kg") * set.optInt("reps")
+                val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                line.addView(workoutText(
+                    set.optString("exercise") + " · " +
+                    String.format(Locale.UK, "%.1f kg", set.optDouble("kg")) +
+                    " × " + set.optInt("reps") +
+                    (if (set.isNull("rir")) "" else " · RIR " + set.optInt("rir")), 13f),
+                    LinearLayout.LayoutParams(0, -2, 1f))
+                line.addView(Button(this).apply {
+                    text = "Remove"
+                    setOnClickListener {
+                        val revised = JSONArray()
+                        for (j in 0 until sets.length()) if (j != i) revised.put(sets.get(j))
+                        draft.put("sets", revised)
+                        storeDraft(draft)
+                        redraw()
+                    }
+                })
+                list.addView(line)
+            }
+            summary.text = sets.length().toString() + " sets · " +
+                String.format(Locale.UK, "%.0f kg", volume) + " total volume"
+        }
+        container.addView(Button(this).apply {
+            text = "Add set"
+            tag = "primary_action"
+            styleButton(this, true)
+            setOnClickListener {
+                val kg = weight.text.toString().toDoubleOrNull()
+                val count = reps.text.toString().toIntOrNull()
+                val reserve = rir.text.toString().trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+                if (kg == null || !kg.isFinite() || kg <= 0 || kg > 2000 ||
+                    count == null || count !in 1..100 ||
+                    (rir.text.isNotBlank() && (reserve == null || reserve !in 0..10))) {
+                    Toast.makeText(this@MainActivity, "Check weight, reps and RIR (0–10)", Toast.LENGTH_LONG).show()
+                } else {
+                    val set = JSONObject().put("exercise", lift.selectedItem.toString())
+                        .put("kg", kg).put("reps", count)
+                        .put("rir", reserve ?: JSONObject.NULL)
+                    val sets = draft.optJSONArray("sets") ?: JSONArray()
+                    sets.put(set)
+                    draft.put("sets", sets)
+                    draft.put("name", name.text.toString())
+                    storeDraft(draft)
+                    redraw()
+                    reps.text.clear()
+                    rir.text.clear()
+                }
+            }
+        })
+        container.addView(summary)
+        container.addView(list)
+        redraw()
+        val scroll = ScrollView(this).apply { addView(container) }
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle("Workout session")
+            .setView(scroll)
+            .setNegativeButton("Keep draft") { _, _ ->
+                draft.put("name", name.text.toString())
+                storeDraft(draft)
+            }
+            .setNeutralButton("Discard") { _, _ ->
+                polishedDialog(android.app.AlertDialog.Builder(this)
+                    .setTitle("Discard workout?")
+                    .setMessage("This deletes only the unfinished draft.")
+                    .setNegativeButton("Keep", null)
+                    .setPositiveButton("Discard") { _, _ ->
+                        workoutPrefs.edit().remove("draft").apply()
+                    })
+            }
+            .setPositiveButton("Finish & save") { _, _ ->
+                val sets = draft.optJSONArray("sets") ?: JSONArray()
+                if (sets.length() == 0) {
+                    Toast.makeText(this, "Add a set before finishing", Toast.LENGTH_LONG).show()
+                } else {
+                    val finished = JSONObject().put("started", draft.optLong("started"))
+                        .put("finished", System.currentTimeMillis())
+                        .put("name", name.text.toString().ifBlank { "Workout" })
+                        .put("sets", JSONArray(sets.toString()))
+                    val all = completedWorkouts()
+                    all.put(finished)
+                    workoutPrefs.edit().putString("completed", all.toString())
+                        .remove("draft").apply()
+                    Toast.makeText(this, "Workout saved", Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+
+    private fun showWorkoutHistory() {
+        val all = completedWorkouts()
+        if (all.length() == 0) {
+            polishedDialog(android.app.AlertDialog.Builder(this)
+                .setTitle("Workout history")
+                .setMessage("No completed workouts yet. Start one from Log.")
+                .setPositiveButton("Done", null))
+            return
+        }
+        val formatter = java.text.SimpleDateFormat("dd MMM yyyy · HH:mm", Locale.UK)
+        val sessions = (0 until all.length()).reversed().mapNotNull { all.optJSONObject(it) }
+        val labels = sessions.map { session ->
+            val sets = session.optJSONArray("sets") ?: JSONArray()
+            val volume = (0 until sets.length()).sumOf { i ->
+                val set = sets.optJSONObject(i)
+                (set?.optDouble("kg") ?: 0.0) * (set?.optInt("reps") ?: 0)
+            }
+            session.optString("name", "Workout") + " · " +
+                formatter.format(java.util.Date(session.optLong("finished"))) +
+                "\n" + sets.length() + " sets · " +
+                String.format(Locale.UK, "%.0f kg volume", volume)
+        }
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle("Completed workouts")
+            .setItems(labels.toTypedArray()) { _, index ->
+                val session = sessions[index]
+                val sets = session.optJSONArray("sets") ?: JSONArray()
+                val details = (0 until sets.length()).mapNotNull { sets.optJSONObject(it) }
+                    .joinToString("\n") {
+                        it.optString("exercise") + " · " +
+                            String.format(Locale.UK, "%.1f kg", it.optDouble("kg")) +
+                            " × " + it.optInt("reps") +
+                            (if (it.isNull("rir")) "" else " · RIR " + it.optInt("rir"))
+                    }
+                polishedDialog(android.app.AlertDialog.Builder(this)
+                    .setTitle(session.optString("name", "Workout"))
+                    .setMessage(details)
+                    .setPositiveButton("Done", null))
+            }
+            .setPositiveButton("Done", null))
+    }
+
+    private fun showWorkoutInsights() {
+        val all = completedWorkouts()
+        val sessions = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+        val cutoff = System.currentTimeMillis() - 30L * 86400000L
+        val recent = sessions.filter { it.optLong("finished") >= cutoff }
+        val sets = recent.flatMap { session ->
+            val items = session.optJSONArray("sets") ?: JSONArray()
+            (0 until items.length()).mapNotNull { items.optJSONObject(it) }
+        }
+        val totalVolume = sets.sumOf { it.optDouble("kg") * it.optInt("reps") }
+        val frequency = recent.map {
+            java.time.Instant.ofEpochMilli(it.optLong("finished"))
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        }.distinct().size
+        val perLift = sets.groupBy { it.optString("exercise") }
+        val lines = perLift.toSortedMap().map { (lift, entries) ->
+            val volume = entries.sumOf { it.optDouble("kg") * it.optInt("reps") }
+            val bestReps = entries.maxOfOrNull { it.optInt("reps") } ?: 0
+            val heaviest = entries.maxOfOrNull { it.optDouble("kg") } ?: 0.0
+            lift + ": " + entries.size + " sets · " +
+                String.format(Locale.UK, "%.0f kg volume", volume) +
+                " · max reps " + bestReps + " · heaviest " +
+                String.format(Locale.UK, "%.1f kg", heaviest)
+        }
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle("Training insights · last 30 days")
+            .setMessage(recent.size.toString() + " completed sessions · " +
+                frequency + " training days\n" + sets.size + " sets · " +
+                String.format(Locale.UK, "%.0f kg", totalVolume) +
+                " volume\n\n" +
+                (if (lines.isEmpty()) "Complete a workout to see insights." else lines.joinToString("\n\n")) +
+                "\n\nVolume = weight × reps. Rep counts and heaviest sets are descriptive, not rep PRs at matched weights.")
+            .setPositiveButton("Done", null))
+    }
+
     private fun showActivityCalendar() {
         val all = records()
         val today = java.time.LocalDate.now()
@@ -945,8 +1165,21 @@ class MainActivity : Activity() {
             addView(dashboardChart)
         })
         calculator.addView(title("Log a lift"))
+        calculator.addView(Button(this).apply {
+            text = "Start / resume full workout"
+            tag = "primary_action"
+            setOnClickListener { showWorkoutLogger() }
+        })
         calculator.addView(TextView(this).apply { text = "1. Select a lift   2. Enter a set   3. Save your session"; textSize = 14f })
         historyPage.addView(title("Training history"))
+        historyPage.addView(Button(this).apply {
+            text = "Completed workouts"
+            setOnClickListener { showWorkoutHistory() }
+        })
+        historyPage.addView(Button(this).apply {
+            text = "Training insights · 30 days"
+            setOnClickListener { showWorkoutInsights() }
+        })
         historyPage.addView(Button(this).apply {
             text = "Compare two lifts"
             setOnClickListener { showLiftComparison() }
