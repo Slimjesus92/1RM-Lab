@@ -102,7 +102,11 @@ class MainActivity : Activity() {
         listOf(dashboard, calculator, historyPage, settingsPage).forEachIndexed { i, page ->
             page.visibility = if (i == index) View.VISIBLE else View.GONE
         }
-        navButtons.forEachIndexed { i, button -> button.alpha = if (i == index) 1f else 0.6f }
+        navButtons.forEachIndexed { i, button ->
+            val active = i == index
+            styleButton(button, active)
+            button.alpha = if (active) 1f else 0.85f
+        }
     }
     private fun editGoal(name: String) {
         val prefs = getSharedPreferences("strength_goals", MODE_PRIVATE)
@@ -775,24 +779,35 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun styleButton(button: Button, primary: Boolean = false) {
+        val accent = if (darkMode) Color.rgb(125, 176, 198) else Color.rgb(42, 92, 128)
+        val foreground = if (darkMode) Color.rgb(231, 237, 242) else Color.rgb(27, 42, 60)
+        val surface = if (darkMode) Color.rgb(35, 46, 58) else Color.rgb(229, 236, 242)
+        button.isAllCaps = false
+        button.textSize = 13f
+        button.setTypeface(null, Typeface.BOLD)
+        button.minHeight = dp(44)
+        button.setPadding(dp(12), dp(8), dp(12), dp(8))
+        button.setTextColor(if (primary) Color.rgb(12, 25, 34) else foreground)
+        button.backgroundTintList = null
+        button.background = rounded(if (primary) accent else surface, 9)
+    }
+
     private fun applyTheme(view: View) {
-        val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
-        val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
+        val foreground = if (darkMode) Color.rgb(231, 237, 242) else Color.rgb(27, 42, 60)
+        val accent = if (darkMode) Color.rgb(125, 176, 198) else Color.rgb(42, 92, 128)
         when (view) {
-            is Button -> {
-                view.setTextColor(if (darkMode) Color.BLACK else Color.WHITE)
-                view.backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
-            }
+            is Button -> styleButton(view, view.tag == "primary_action")
             is EditText -> {
                 view.setTextColor(foreground)
-                view.setHintTextColor(if (darkMode) Color.LTGRAY else Color.GRAY)
+                view.setHintTextColor(if (darkMode) Color.rgb(154, 169, 182) else Color.rgb(99, 112, 124))
                 view.backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
+                view.setPadding(dp(12), dp(10), dp(12), dp(10))
             }
             is TextView -> view.setTextColor(foreground)
         }
         if (view is ViewGroup) for (i in 0 until view.childCount) applyTheme(view.getChildAt(i))
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -832,11 +847,16 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(4), dp(4), dp(4))
             setBackgroundColor(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE)
         }
-        navButtons = listOf("⌂ Home", "+ Log", "▤ History", "⚙ Settings").mapIndexed { index, label ->
+        navButtons = listOf("Home", "Log", "History", "Settings").mapIndexed { index, label ->
             Button(this).apply {
-                text = label; textSize = 11f; isAllCaps = false; minHeight = dp(48)
+                text = label
+                textSize = 12f
+                isAllCaps = false
+                minHeight = dp(48)
                 setOnClickListener { showTab(index) }
-            }.also { nav.addView(it, LinearLayout.LayoutParams(0, dp(52), 1f)) }
+            }.also { nav.addView(it, LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            }) }
         }
         frame.addView(nav)
         frame.setOnApplyWindowInsetsListener { _, insets ->
@@ -916,14 +936,14 @@ class MainActivity : Activity() {
         val reps = edit("Repetitions (1–15)", false).also { repsInput = it }
         val rir = edit("RIR (optional, 0–5)", false).also { rirInput = it }
         calculator.addView(weight); calculator.addView(reps); calculator.addView(rir)
-        val add = Button(this).apply { text = "1 · Add set" }
+        val add = Button(this).apply { text = "Add set"; tag = "primary_action" }
         calculator.addView(add)
         rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         calculator.addView(rows)
         result = TextView(this).apply { text = "Add a set to estimate your 1RM"; textSize = 22f; setPadding(0, 18, 0, 18) }
         calculator.addView(result)
         calculator.addView(Button(this).apply {
-            text = "2 · Save estimated 1RM"
+            text = "Save estimated 1RM"; tag = "primary_action"
             setOnClickListener {
                 if (sets.isEmpty()) { Toast.makeText(this@MainActivity, "Add a set first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
                 saveRecord(exercise.selectedItem.toString(), sets.maxOf { OneRmEngine.estimate(it).combinedKg }, "estimated")
@@ -952,7 +972,7 @@ class MainActivity : Activity() {
         val actualWeight = edit("Weight lifted for 1 rep (kg)", true)
         testedPanel.addView(actualWeight)
         testedPanel.addView(Button(this).apply {
-            text = "Save actual 1RM"
+            text = "Save actual 1RM"; tag = "primary_action"
             setOnClickListener {
                 val value = actualWeight.text.toString().toDoubleOrNull()
                 if (value == null || !value.isFinite() || value <= 0.0) {
@@ -1027,7 +1047,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.2 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.3 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
