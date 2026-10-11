@@ -1220,6 +1220,13 @@ class MainActivity : Activity() {
         for (lift in exerciseNames.filter { it != "Other" }) {
             val result = StrengthForecast.calculate(all, lift)
             content.addView(workoutText(lift.uppercase(Locale.UK), 15f))
+            if (result != null) {
+                content.addView(StrengthForecastChart(this).apply {
+                    darkMode = this@MainActivity.darkMode
+                    observations = StrengthForecast.observations(all, lift)
+                    forecast = result
+                })
+            }
             content.addView(workoutText(if (result == null)
                 "Not enough evidence yet. Log at least four sessions spanning 21 days with working sets of 1–10 reps."
             else String.format(Locale.UK,
