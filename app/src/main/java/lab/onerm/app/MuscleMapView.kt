@@ -114,16 +114,22 @@ class MuscleMapView(context: Context) : View(context) {
             paint.style = Paint.Style.FILL
             paint.color = if (dark) Color.rgb(58, 71, 83) else Color.rgb(211, 221, 228)
             canvas.drawOval(x0 + bodyW * .39f, y0, x0 + bodyW * .61f, y0 + bodyH * .18f, paint)
-            canvas.drawRoundRect(x0 + bodyW * .27f, y0 + bodyH * .18f,
-                x0 + bodyW * .73f, y0 + bodyH * .65f, 25f, 25f, paint)
-            canvas.drawRoundRect(x0 + bodyW * .09f, y0 + bodyH * .20f,
-                x0 + bodyW * .25f, y0 + bodyH * .61f, 16f, 16f, paint)
-            canvas.drawRoundRect(x0 + bodyW * .75f, y0 + bodyH * .20f,
-                x0 + bodyW * .91f, y0 + bodyH * .61f, 16f, 16f, paint)
-            canvas.drawRoundRect(x0 + bodyW * .29f, y0 + bodyH * .59f,
-                x0 + bodyW * .47f, y0 + bodyH, 13f, 13f, paint)
-            canvas.drawRoundRect(x0 + bodyW * .53f, y0 + bodyH * .59f,
-                x0 + bodyW * .71f, y0 + bodyH, 13f, 13f, paint)
+            val silhouette = Path()
+            val points = floatArrayOf(
+                .40f,.17f, .31f,.19f, .21f,.22f, .12f,.29f,
+                .08f,.48f, .045f,.64f, .14f,.66f, .20f,.47f,
+                .28f,.36f, .30f,.52f, .32f,.62f, .30f,.76f,
+                .30f,.99f, .45f,.99f, .47f,.76f, .50f,.66f,
+                .53f,.76f, .55f,.99f, .70f,.99f, .70f,.76f,
+                .68f,.62f, .70f,.52f, .72f,.36f, .80f,.47f,
+                .86f,.66f, .955f,.64f, .92f,.48f, .88f,.29f,
+                .79f,.22f, .69f,.19f, .60f,.17f)
+            silhouette.moveTo(x0 + bodyW * points[0], y0 + bodyH * points[1])
+            for (i in 2 until points.size step 2) {
+                silhouette.lineTo(x0 + bodyW * points[i], y0 + bodyH * points[i + 1])
+            }
+            silhouette.close()
+            canvas.drawPath(silhouette, paint)
             for (region in if (side == 0) front else back) {
                 val color = when (region.key) {
                     in primary -> Color.rgb(45, 137, 191)
