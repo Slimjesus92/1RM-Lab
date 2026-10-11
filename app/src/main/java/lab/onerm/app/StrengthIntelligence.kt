@@ -45,10 +45,26 @@ object StrengthIntelligence {
             estimate < priorEstimate * 0.985 -> "Performance below previous session"
             else -> "Performance broadly stable"
         }
-        val liftStep = when (exercise) {
-            "Squat", "Deadlift" -> 5.0
-            else -> 2.5
+        // Infer the smallest repeatable positive loading step from this lift's own
+        // completed working sets. Ignore jumps likely to represent different rep schemes.
+        val allLoads = mutableListOf<Double>()
+        for (i in 0 until sessions.length()) {
+            val sets = sessions.optJSONObject(i)?.optJSONArray("sets") ?: continue
+            for (j in 0 until sets.length()) {
+                val set = sets.optJSONObject(j) ?: continue
+                if (set.optString("exercise") != exercise || set.optBoolean("warmup", false)) continue
+                val load = set.optDouble("kg")
+                if (load.isFinite() && load > 0.0 && set.optInt("reps") in 1..30) allLoads.add(load)
+            }
         }
+        val uniqueLoads = allLoads.distinct().sorted()
+        val observedSteps = uniqueLoads.zipWithNext { a, b -> b - a }
+            .filter { it >= 0.5 && it <= 10.0 }
+        val defaultStep = if (exercise == "Squat" || exercise == "Deadlift") 5.0 else 2.5
+        val liftStep = if (uniqueLoads.size >= 3 && observedSteps.size >= 2)
+            observedSteps.minOrNull()!!.coerceIn(1.0, defaultStep)
+        else defaultStep
+        val personalised = uniqueLoads.size >= 3 && observedSteps.size >= 2
         val estimates = workouts.mapNotNull { session ->
             session.maxOfOrNull { it.optDouble("kg") * (1 + it.optInt("reps") / 30.0) }
         }
@@ -61,11 +77,13 @@ object StrengthIntelligence {
             prior.optInt("reps") >= reps &&
             (!prior.has("rir") || prior.isNull("rir") || prior.optInt("rir") >= 2)
         val increase = hasRir && rir >= 3 && consistent && !repeatedDrop && reps in 3..12
-        val target = if (increase) round((kg + liftStep) / 2.5) * 2.5 else kg
+        val target = if (increase) round((kg + liftStep) * 2.0) / 2.0 else kg
         val reason = when {
             !hasRir -> "RIR wasn't logged for the reference set; hold weight until effort is clearer."
             repeatedDrop -> "Performance fell across three sessions. Hold the load and review recovery and technique."
-            increase -> "Two comparable sessions and at least 3 RIR support a cautious " + liftStep.toInt() + " kg increase."
+            increase -> "Comparable sessions and at least 3 RIR support a cautious " +
+                String.format(java.util.Locale.UK, "%.1f kg", liftStep) +
+                (if (personalised) " step inferred from your logged loads." else " default step for this lift.")
             stalled -> "Performance has been similar across three sessions. Hold the load and aim to add a rep."
             rir <= 1 -> "Last set was close to failure; repeat the load before increasing."
             workouts.size < 2 -> "Only one session available; establish a repeatable baseline first."
