@@ -928,8 +928,8 @@ class MainActivity : Activity() {
                     draft.put("sets", sets)
                     if (previousBest == null || count > previousBest) {
                         Toast.makeText(this@MainActivity,
-                            if (previousBest == null) "New weight-specific rep record!"
-                            else "Rep PR! +" + (count - previousBest) + " reps at " + kg + " kg",
+                            if (previousBest == null) "Potential first rep record — save workout to confirm"
+                            else "Potential rep PR: +" + (count - previousBest) + " reps at " + kg + " kg (save workout)",
                             Toast.LENGTH_SHORT).show()
                     }
                     draft.put("name", name.text.toString())
@@ -976,6 +976,7 @@ class MainActivity : Activity() {
                 workoutPrefs.edit().putString("completed", all.toString())
                     .remove("draft").apply()
                 Toast.makeText(this, "Workout saved", Toast.LENGTH_SHORT).show()
+                workoutDialog.dismiss()
             }
         }
 
