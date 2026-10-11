@@ -1256,10 +1256,6 @@ class MainActivity : Activity() {
                 " · max reps " + bestReps + " · heaviest " +
                 String.format(Locale.UK, "%.1f kg", heaviest)
         }
-        val forecastButton = Button(this).apply {
-            text = "Explore 4-week strength forecast"
-            setOnClickListener { showStrengthForecast() }
-        }
         polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Training insights · last 30 days")
             .setMessage(recent.size.toString() + " completed sessions · " +
@@ -1268,6 +1264,7 @@ class MainActivity : Activity() {
                 " volume\n\n" +
                 (if (lines.isEmpty()) "Complete a workout to see insights." else lines.joinToString("\n\n")) +
                 "\n\nVolume = weight × reps. See Rep records for true best reps at each logged weight.")
+            .setNeutralButton("Strength forecast") { _, _ -> showStrengthForecast() }
             .setPositiveButton("Done", null))
     }
 
