@@ -833,6 +833,26 @@ class MainActivity : Activity() {
                 exerciseName = name
                 dark = darkMode
             }, LinearLayout.LayoutParams(-1, dp(260)))
+            val legend = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(dp(12), dp(4), dp(12), dp(8))
+            }
+            for ((label, colour) in listOf(
+                "Primary" to Color.rgb(45, 137, 191),
+                "Secondary" to Color.rgb(132, 185, 207),
+                "Other" to (if (darkMode) Color.rgb(79, 93, 105) else Color.rgb(186, 199, 208))
+            )) {
+                val entry = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                }
+                entry.addView(View(this@MainActivity).apply {
+                    background = rounded(colour, 4)
+                }, LinearLayout.LayoutParams(dp(12), dp(12)))
+                entry.addView(workoutText(" " + label, 11f))
+                legend.addView(entry, LinearLayout.LayoutParams(0, -2, 1f))
+            }
+            addView(legend)
             addView(workoutText(MuscleMapView.description(name), 13f))
         }
 
