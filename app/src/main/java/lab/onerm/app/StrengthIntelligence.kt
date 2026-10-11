@@ -94,7 +94,7 @@ object StrengthIntelligence {
         val successes = outcomes.filter { it.second }
         val failures = outcomes.filterNot { it.second }
         val learnedStep = successes.map { it.first }
-            .filter { candidate -> failures.none { !it.second && it.first <= candidate + 0.25 } }
+            .filter { candidate -> failures.none { it.first <= candidate + 0.25 } }
             .minOrNull()
         val hasOutcomeEvidence = outcomes.size >= 3 && successes.size >= 2
         val outcomeStep = if (hasOutcomeEvidence && learnedStep != null)
