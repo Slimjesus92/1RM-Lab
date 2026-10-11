@@ -1227,6 +1227,10 @@ class MainActivity : Activity() {
                     forecast = result
                 })
             }
+            val check = StrengthForecast.backtest(all, lift)
+            if (check != null) content.addView(workoutText(String.format(Locale.UK,
+                "Backtest: %d historical checks · %.1f kg average absolute error · %d within displayed range",
+                check.samples, check.meanAbsoluteErrorKg, check.withinBand), 12f))
             content.addView(workoutText(if (result == null)
                 "Not enough evidence yet. Log at least four sessions spanning 21 days with working sets of 1–10 reps."
             else String.format(Locale.UK,
