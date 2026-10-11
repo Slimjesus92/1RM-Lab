@@ -946,7 +946,9 @@ class MainActivity : Activity() {
             }
         })
         fun updateSuggestion() {
-            val previous = previousWorkoutSets(lift.selectedItem?.toString() ?: "")
+            val selected = lift.selectedItem?.toString() ?: ""
+            val intelligent = StrengthIntelligence.suggest(completedWorkouts(), selected)
+            val previous = previousWorkoutSets(selected)
             if (previous.isEmpty()) {
                 suggestion.text = "No previous completed session for this lift."
             } else {
@@ -957,6 +959,14 @@ class MainActivity : Activity() {
                 weight.setText(String.format(Locale.UK, "%.1f", last.optDouble("kg")))
                 reps.setText(last.optInt("reps").toString())
                 if (!last.isNull("rir")) rir.setText(last.optInt("rir").toString()) else rir.text.clear()
+            }
+            if (intelligent != null) {
+                suggestion.text = "STRENGTH INTELLIGENCE · " + intelligent.trend +
+                    "\nNext session: " + String.format(Locale.UK, "%.1f kg × %d", intelligent.weightKg, intelligent.reps) +
+                    " · target RIR " + intelligent.targetRir + "\n" + intelligent.explanation
+                weight.setText(String.format(Locale.UK, "%.1f", intelligent.weightKg))
+                reps.setText(intelligent.reps.toString())
+                rir.setText(intelligent.targetRir.toString())
             }
         }
         lift.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
