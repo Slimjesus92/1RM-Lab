@@ -15,21 +15,46 @@ class MuscleMapView(context: Context) : View(context) {
         set(value) { field = value; invalidate() }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private data class Region(val key: String, val cx: Float, val cy: Float, val rx: Float, val ry: Float)
+    private data class Region(val key: String, val x: Float, val y: Float, val rx: Float, val ry: Float, val tilt: Float = 0f)
     private val front = listOf(
-        Region("delts", 0.20f, .23f, .09f, .09f), Region("delts", .80f, .23f, .09f, .09f),
-        Region("chest", .39f, .28f, .12f, .09f), Region("chest", .61f, .28f, .12f, .09f),
-        Region("biceps", .16f, .40f, .06f, .12f), Region("biceps", .84f, .40f, .06f, .12f),
-        Region("core", .50f, .48f, .15f, .14f),
-        Region("quads", .39f, .73f, .09f, .17f), Region("quads", .61f, .73f, .09f, .17f))
+        Region("neck", .50f,.17f,.085f,.05f),
+        Region("delts", .23f,.27f,.105f,.087f,-24f), Region("delts",.77f,.27f,.105f,.087f,24f),
+        Region("chest", .39f,.31f,.125f,.09f,-14f), Region("chest",.61f,.31f,.125f,.09f,14f),
+        Region("biceps",.155f,.405f,.060f,.11f,-9f), Region("biceps",.845f,.405f,.060f,.11f,9f),
+        Region("forearms",.105f,.565f,.048f,.125f,-8f), Region("forearms",.895f,.565f,.048f,.125f,8f),
+        Region("core",.50f,.475f,.125f,.13f),
+        Region("obliques",.34f,.49f,.07f,.11f), Region("obliques",.66f,.49f,.07f,.11f),
+        Region("adductors",.455f,.70f,.045f,.14f,8f), Region("adductors",.545f,.70f,.045f,.14f,-8f),
+        Region("quads",.355f,.73f,.09f,.17f,-6f), Region("quads",.645f,.73f,.09f,.17f,6f),
+        Region("calves",.365f,.92f,.065f,.07f), Region("calves",.635f,.92f,.065f,.07f))
     private val back = listOf(
-        Region("rear delts", .20f, .23f, .09f, .09f), Region("rear delts", .80f, .23f, .09f, .09f),
-        Region("upper back", .50f, .30f, .22f, .11f),
-        Region("lats", .34f, .44f, .10f, .13f), Region("lats", .66f, .44f, .10f, .13f),
-        Region("erectors", .50f, .51f, .07f, .17f),
-        Region("triceps", .16f, .40f, .06f, .12f), Region("triceps", .84f, .40f, .06f, .12f),
-        Region("glutes", .40f, .64f, .10f, .10f), Region("glutes", .60f, .64f, .10f, .10f),
-        Region("hamstrings", .39f, .78f, .09f, .13f), Region("hamstrings", .61f, .78f, .09f, .13f))
+        Region("traps",.50f,.245f,.16f,.085f),
+        Region("rear delts",.23f,.27f,.10f,.08f,-24f), Region("rear delts",.77f,.27f,.10f,.08f,24f),
+        Region("upper back",.50f,.35f,.155f,.10f),
+        Region("lats",.345f,.445f,.10f,.125f,12f), Region("lats",.655f,.445f,.10f,.125f,-12f),
+        Region("triceps",.155f,.405f,.06f,.115f,-9f), Region("triceps",.845f,.405f,.06f,.115f,9f),
+        Region("forearms",.105f,.565f,.048f,.125f,-8f), Region("forearms",.895f,.565f,.048f,.125f,8f),
+        Region("erectors",.46f,.51f,.042f,.145f), Region("erectors",.54f,.51f,.042f,.145f),
+        Region("glutes",.405f,.655f,.10f,.10f), Region("glutes",.595f,.655f,.10f,.10f),
+        Region("hamstrings",.355f,.79f,.082f,.135f,-5f), Region("hamstrings",.645f,.79f,.082f,.135f,5f),
+        Region("calves",.365f,.92f,.065f,.07f), Region("calves",.635f,.92f,.065f,.07f))
+    private fun drawRegion(canvas: Canvas, region: Region, x: Float, y: Float, w: Float, h: Float, color: Int) {
+        val cx = x + w * region.x
+        val cy = y + h * region.y
+        canvas.save()
+        canvas.rotate(region.tilt, cx, cy)
+        paint.style = Paint.Style.FILL
+        paint.color = color
+        canvas.drawOval(cx - w * region.rx, cy - h * region.ry,
+            cx + w * region.rx, cy + h * region.ry, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = resources.displayMetrics.density * 1.2f
+        paint.color = if (dark) Color.rgb(24, 36, 48) else Color.rgb(122, 142, 154)
+        canvas.drawOval(cx - w * region.rx, cy - h * region.ry,
+            cx + w * region.rx, cy + h * region.ry, paint)
+        paint.style = Paint.Style.FILL
+        canvas.restore()
+    }
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         setMeasuredDimension(width, (width * .73f).toInt().coerceAtLeast(200))
@@ -60,15 +85,12 @@ class MuscleMapView(context: Context) : View(context) {
             canvas.drawRoundRect(x0 + bodyW * .53f, y0 + bodyH * .59f,
                 x0 + bodyW * .71f, y0 + bodyH, 13f, 13f, paint)
             for (region in if (side == 0) front else back) {
-                paint.color = when (region.key) {
+                val color = when (region.key) {
                     in primary -> Color.rgb(45, 137, 191)
                     in secondary -> Color.rgb(132, 185, 207)
                     else -> if (dark) Color.rgb(79, 93, 105) else Color.rgb(186, 199, 208)
                 }
-                canvas.drawOval(x0 + bodyW * (region.cx - region.rx),
-                    y0 + bodyH * (region.cy - region.ry),
-                    x0 + bodyW * (region.cx + region.rx),
-                    y0 + bodyH * (region.cy + region.ry), paint)
+                drawRegion(canvas, region, x0, y0, bodyW, bodyH, color)
             }
             paint.color = if (dark) Color.WHITE else Color.rgb(35, 47, 60)
             paint.textAlign = Paint.Align.CENTER
@@ -80,10 +102,10 @@ class MuscleMapView(context: Context) : View(context) {
     companion object {
         fun muscleGroups(exercise: String): Pair<Set<String>, Set<String>> = when (exercise) {
             "Bench press" -> setOf("chest") to setOf("triceps", "delts")
-            "Squat" -> setOf("quads", "glutes") to setOf("hamstrings", "erectors", "core")
-            "Deadlift" -> setOf("glutes", "hamstrings") to setOf("quads", "erectors", "lats", "upper back", "core")
-            "Overhead press" -> setOf("delts") to setOf("triceps", "core", "upper back")
-            "Barbell row" -> setOf("lats", "upper back") to setOf("rear delts", "biceps", "erectors")
+            "Squat" -> setOf("quads", "glutes") to setOf("adductors", "erectors", "core")
+            "Deadlift" -> setOf("glutes", "hamstrings") to setOf("quads", "adductors", "erectors", "lats", "traps", "core")
+            "Overhead press" -> setOf("delts") to setOf("triceps", "traps", "core")
+            "Barbell row" -> setOf("lats", "upper back") to setOf("rear delts", "biceps", "traps", "erectors")
             else -> emptySet<String>() to emptySet()
         }
         fun description(exercise: String): String {
