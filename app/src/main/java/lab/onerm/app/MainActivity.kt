@@ -280,7 +280,7 @@ class MainActivity : Activity() {
             setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
         })
         val sexPicker = Spinner(this)
-        sexPicker.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+        sexPicker.adapter = spinnerAdapter(
             listOf("No comparison", "Male reference", "Female reference"))
         sexPicker.setSelection(when (sexPrefs.getString("standard_reference", "none")) {
             "male" -> 1
@@ -587,6 +587,27 @@ class MainActivity : Activity() {
         calculate()
         return section
     }
+    private fun spinnerAdapter(options: List<String>): ArrayAdapter<String> {
+        val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
+        val surface = if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE
+        return object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, options) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val label = super.getView(position, convertView, parent) as TextView
+                label.setTextColor(foreground)
+                label.setBackgroundColor(surface)
+                label.setPadding(dp(12), dp(12), dp(12), dp(12))
+                return label
+            }
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val label = super.getDropDownView(position, convertView, parent) as TextView
+                label.setTextColor(foreground)
+                label.setBackgroundColor(surface)
+                label.setPadding(dp(14), dp(12), dp(14), dp(12))
+                return label
+            }
+        }
+    }
+
     private fun applyTheme(view: View) {
         val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
         val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
@@ -678,8 +699,8 @@ class MainActivity : Activity() {
             background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE, 22)
             addView(dashboardChart)
         })
-        calculator.addView(title("1RM Calculator"))
-        calculator.addView(trainingWeightTool())
+        calculator.addView(title("Log a lift"))
+        calculator.addView(TextView(this).apply { text = "1. Select a lift   2. Enter a set   3. Save your session"; textSize = 14f })
         historyPage.addView(title("Training history"))
         settingsPage.addView(title("Settings"))
         settingsPage.addView(TextView(this).apply { text = "DATA BACKUP"; textSize = 18f })
@@ -720,14 +741,14 @@ class MainActivity : Activity() {
         val reps = edit("Repetitions (1–15)", false).also { repsInput = it }
         val rir = edit("RIR (optional, 0–5)", false).also { rirInput = it }
         calculator.addView(weight); calculator.addView(reps); calculator.addView(rir)
-        val add = Button(this).apply { text = "Add set" }
+        val add = Button(this).apply { text = "1 · Add set" }
         calculator.addView(add)
         rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         calculator.addView(rows)
         result = TextView(this).apply { text = "Add a set to estimate your 1RM"; textSize = 22f; setPadding(0, 18, 0, 18) }
         calculator.addView(result)
         calculator.addView(Button(this).apply {
-            text = "Save session"
+            text = "2 · Save estimated 1RM"
             setOnClickListener {
                 if (sets.isEmpty()) { Toast.makeText(this@MainActivity, "Add a set first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
                 saveRecord(exercise.selectedItem.toString(), sets.maxOf { OneRmEngine.estimate(it).combinedKg }, "estimated")
@@ -751,10 +772,11 @@ class MainActivity : Activity() {
                 updateWidget()
             }
         }
-        calculator.addView(TextView(this).apply { text = "ACTUAL 1RM (TESTED LIFT)"; textSize = 18f; setPadding(0, 18, 0, 0) })
+        val testedPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        testedPanel.addView(TextView(this).apply { text = "ACTUAL 1RM (TESTED LIFT)"; textSize = 18f; setPadding(0, 18, 0, 0) })
         val actualWeight = edit("Weight lifted for 1 rep (kg)", true)
-        calculator.addView(actualWeight)
-        calculator.addView(Button(this).apply {
+        testedPanel.addView(actualWeight)
+        testedPanel.addView(Button(this).apply {
             text = "Save actual 1RM"
             setOnClickListener {
                 val value = actualWeight.text.toString().toDoubleOrNull()
@@ -767,6 +789,15 @@ class MainActivity : Activity() {
                 }
             }
         })
+        calculator.addView(Button(this).apply {
+            text = "Show tested 1RM entry"
+            setOnClickListener {
+                val expanded = testedPanel.visibility != View.VISIBLE
+                testedPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+                text = if (expanded) "Hide tested 1RM entry" else "Show tested 1RM entry"
+            }
+        })
+        calculator.addView(testedPanel)
         exercise.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
@@ -793,6 +824,17 @@ class MainActivity : Activity() {
             }
         }
         calculator.addView(Button(this).apply { text = "Clear session"; setOnClickListener { sets.clear(); refresh() } })
+        val extraTools = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        extraTools.addView(trainingWeightTool())
+        calculator.addView(Button(this).apply {
+            text = "Show training weights & rep-max tools"
+            setOnClickListener {
+                val expanded = extraTools.visibility != View.VISIBLE
+                extraTools.visibility = if (expanded) View.VISIBLE else View.GONE
+                text = if (expanded) "Hide training weights & rep-max tools" else "Show training weights & rep-max tools"
+            }
+        })
+        calculator.addView(extraTools)
         settingsPage.addView(TextView(this).apply { text = "APPEARANCE"; textSize = 20f; setPadding(0, 28, 0, 8) })
         val themes = listOf("Dark / Performance", "Light / Scientific")
         val themeSpinner = Spinner(this)
