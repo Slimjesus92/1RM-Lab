@@ -944,7 +944,7 @@ class MainActivity : Activity() {
         container.addView(list)
         redraw()
         val scroll = ScrollView(this).apply { addView(container) }
-        polishedDialog(android.app.AlertDialog.Builder(this)
+        val workoutDialog = polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Workout session")
             .setView(scroll)
             .setNegativeButton("Keep draft") { _, _ ->
@@ -960,22 +960,25 @@ class MainActivity : Activity() {
                         workoutPrefs.edit().remove("draft").apply()
                     })
             }
-            .setPositiveButton("Finish & save") { _, _ ->
-                val sets = draft.optJSONArray("sets") ?: JSONArray()
-                if (sets.length() == 0) {
-                    Toast.makeText(this, "Add a set before finishing", Toast.LENGTH_LONG).show()
-                } else {
-                    val finished = JSONObject().put("started", draft.optLong("started"))
-                        .put("finished", System.currentTimeMillis())
-                        .put("name", name.text.toString().ifBlank { "Workout" })
-                        .put("sets", JSONArray(sets.toString()))
-                    val all = completedWorkouts()
-                    all.put(finished)
-                    workoutPrefs.edit().putString("completed", all.toString())
-                        .remove("draft").apply()
-                    Toast.makeText(this, "Workout saved", Toast.LENGTH_SHORT).show()
-                }
-            })
+            .setPositiveButton("Finish & save", null)
+)
+        workoutDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
+            val sets = draft.optJSONArray("sets") ?: JSONArray()
+            if (sets.length() == 0) {
+                Toast.makeText(this, "Add a set before finishing", Toast.LENGTH_LONG).show()
+            } else {
+                val finished = JSONObject().put("started", draft.optLong("started"))
+                    .put("finished", System.currentTimeMillis())
+                    .put("name", name.text.toString().ifBlank { "Workout" })
+                    .put("sets", JSONArray(sets.toString()))
+                val all = completedWorkouts()
+                all.put(finished)
+                workoutPrefs.edit().putString("completed", all.toString())
+                    .remove("draft").apply()
+                Toast.makeText(this, "Workout saved", Toast.LENGTH_SHORT).show()
+            }
+        }
+
     }
 
     private fun showWorkoutHistory() {
