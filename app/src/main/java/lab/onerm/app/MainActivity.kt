@@ -89,12 +89,13 @@ class MainActivity : Activity() {
             }.show()
     }
     private val exerciseNames = listOf("Bench press", "Squat", "Deadlift", "Overhead press", "Barbell row", "Other")
-    private fun rounded(color: Int, radius: Int = 18) = GradientDrawable().apply {
+    private fun rounded(color: Int, radius: Int = 12) = GradientDrawable().apply {
         setColor(color); cornerRadius = dp(radius).toFloat()
     }
     private fun title(label: String) = TextView(this).apply {
-        text = label; textSize = 24f; setTypeface(null, Typeface.BOLD)
-        setPadding(0, dp(8), 0, dp(20))
+        text = label; textSize = 23f; setTypeface(null, Typeface.BOLD)
+        setLetterSpacing(-0.015f)
+        setPadding(0, dp(8), 0, dp(16))
     }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun showTab(index: Int) {
@@ -333,15 +334,15 @@ class MainActivity : Activity() {
                 .map { it.optDouble("value") }.filter { it.isFinite() && it > 0 }
             val box = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(20), dp(20), dp(20), dp(20))
-                background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE, 22)
+                setPadding(dp(16), dp(16), dp(16), dp(16))
+                background = rounded(if (darkMode) Color.rgb(28, 37, 48) else Color.WHITE, 12)
                 elevation = dp(3).toFloat()
             }
             box.addView(TextView(this).apply { text = name.uppercase(Locale.UK); textSize = 13f; setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)) })
             box.addView(TextView(this).apply {
                 text = if (estimated.isEmpty()) "—" else String.format(Locale.UK, "%.1f kg", estimated.maxOrNull())
-                textSize = 32f; setTypeface(null, Typeface.BOLD)
-                setTextColor(if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175))
+                textSize = 29f; setTypeface(null, Typeface.BOLD)
+                setTextColor(if (darkMode) Color.rgb(125, 176, 198) else Color.rgb(42, 92, 128))
             })
             box.addView(TextView(this).apply {
                 text = if (tested.isEmpty()) "Estimated personal best" else
@@ -833,7 +834,7 @@ class MainActivity : Activity() {
         }
         navButtons = listOf("⌂ Home", "+ Log", "▤ History", "⚙ Settings").mapIndexed { index, label ->
             Button(this).apply {
-                text = label; textSize = 11f; isAllCaps = false
+                text = label; textSize = 11f; isAllCaps = false; minHeight = dp(48)
                 setOnClickListener { showTab(index) }
             }.also { nav.addView(it, LinearLayout.LayoutParams(0, dp(52), 1f)) }
         }
@@ -862,7 +863,7 @@ class MainActivity : Activity() {
         dashboard.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(12), dp(8), dp(8))
-            background = rounded(if (darkMode) Color.rgb(29, 40, 55) else Color.WHITE, 22)
+            background = rounded(if (darkMode) Color.rgb(28, 37, 48) else Color.WHITE, 12)
             addView(dashboardChart)
         })
         calculator.addView(title("Log a lift"))
