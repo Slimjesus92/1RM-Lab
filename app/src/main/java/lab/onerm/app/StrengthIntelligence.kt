@@ -79,30 +79,17 @@ object StrengthIntelligence {
             val top = candidates.maxByOrNull { it.optDouble("kg") * (1 + it.optInt("reps") / 30.0) }
             if (top != null) chronological.add(top)
         }
-        val outcomes = mutableListOf<Pair<Double, Boolean>>()
-        var comparablePairs = 0
+        val outcomes = mutableListOf<lab.onerm.ProgressionEvidence.Outcome>()
         for (i in 1 until chronological.size) {
             val before = chronological[i - 1]
             val after = chronological[i]
-            val step = after.optDouble("kg") - before.optDouble("kg")
-            if (kotlin.math.abs(after.optInt("reps") - before.optInt("reps")) > 2) continue
-            if (step < 0.5 || step > 10.0) continue
-            comparablePairs++
-            val beforeReps = before.optInt("reps")
-            val afterReps = after.optInt("reps")
-            val rirKnown = after.has("rir") && !after.isNull("rir")
-            val effortOkay = rirKnown && after.optInt("rir") >= 2
-            val tolerated = afterReps >= beforeReps - 2 && effortOkay
-            if (rirKnown) outcomes.add(step to tolerated)
+            fun asSet(set: JSONObject) = lab.onerm.ProgressionEvidence.Set(
+                set.optDouble("kg"), set.optInt("reps"),
+                if (set.has("rir") && !set.isNull("rir")) set.optInt("rir") else null)
+            lab.onerm.ProgressionEvidence.compare(asSet(before), asSet(after))?.let { outcomes.add(it) }
         }
-        val successes = outcomes.filter { it.second }
-        val failures = outcomes.filterNot { it.second }
-        val learnedStep = successes.map { it.first }
-            .filter { candidate -> failures.none { it.first <= candidate + 0.25 } }
-            .minOrNull()
-        val hasOutcomeEvidence = outcomes.size >= 3 && successes.size >= 2
-        val outcomeStep = if (hasOutcomeEvidence && learnedStep != null)
-            learnedStep.coerceIn(1.0, defaultStep) else null
+        val successes = outcomes.filter { it.tolerated }
+        val outcomeStep = lab.onerm.ProgressionEvidence.selectStep(outcomes, defaultStep)
         val recommendedStep = outcomeStep ?: liftStep
 
         val estimates = workouts.mapNotNull { session ->
@@ -119,7 +106,7 @@ object StrengthIntelligence {
         val increase = hasRir && rir >= 3 && consistent && !repeatedDrop && reps in 3..12
         val target = if (increase) round((kg + recommendedStep) * 2.0) / 2.0 else kg
         val evidence = when {
-            outcomeStep != null && comparablePairs >= 5 -> "Moderate - outcome-informed"
+            outcomeStep != null && outcomes.size >= 5 -> "Moderate - outcome-informed"
             outcomeStep != null -> "Emerging - outcome-informed"
             personalised && workouts.size >= 3 -> "Emerging - load history"
             workouts.size >= 2 && hasRir -> "Limited - recent sessions"
