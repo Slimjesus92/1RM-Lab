@@ -957,6 +957,23 @@ class MainActivity : Activity() {
                     (if (set.isNull("rir")) "" else " · RIR " + set.optInt("rir")), 13f),
                     LinearLayout.LayoutParams(0, -2, 1f))
                 line.addView(Button(this).apply {
+                    text = "↑"
+                    isEnabled = i > 0
+                    setOnClickListener {
+                        val moved = JSONArray()
+                        for (j in 0 until sets.length()) {
+                            moved.put(sets.get(when (j) {
+                                i - 1 -> i
+                                i -> i - 1
+                                else -> j
+                            }))
+                        }
+                        draft.put("sets", moved)
+                        storeDraft(draft)
+                        redraw()
+                    }
+                })
+                line.addView(Button(this).apply {
                     text = "Edit"
                     setOnClickListener {
                         val editor = LinearLayout(this@MainActivity).apply {
