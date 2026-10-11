@@ -80,13 +80,13 @@ class MainActivity : Activity() {
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
                 if (chosen.isEmpty()) {
-                    Toast.makeText(this, "Choose at least one exercise", Toast.LENGTH_SHORT))
+                    Toast.makeText(this, "Choose at least one exercise", Toast.LENGTH_SHORT).show()
                 } else {
                     getSharedPreferences("ui_settings", MODE_PRIVATE).edit()
                         .putString("dashboard_lifts", exerciseNames.filter { it in chosen }.joinToString("|")).apply()
                     renderDashboard()
                 }
-            }.show()
+            })
     }
     private val exerciseNames = listOf("Bench press", "Squat", "Deadlift", "Overhead press", "Barbell row", "Other")
     private fun rounded(color: Int, radius: Int = 12) = GradientDrawable().apply {
@@ -1281,7 +1281,7 @@ class MainActivity : Activity() {
             .setView(holder)
             .setNegativeButton("Cancel", null)
             .setNeutralButton("Delete") { _, _ ->
-                android.app.AlertDialog.Builder(this).setTitle("Delete this record?")
+                polishedDialog(android.app.AlertDialog.Builder(this).setTitle("Delete this record?")
                     .setMessage("This cannot be undone. Export a backup first if needed.")
                     .setNegativeButton("Cancel", null)
                     .setPositiveButton("Delete") { _, _ ->
@@ -1298,7 +1298,7 @@ class MainActivity : Activity() {
                     original.put("value", value)
                     persistRecords(all)
                 }
-            }.show()
+            })
     }
     private fun chooseRecord() {
         val all = records()
