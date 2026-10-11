@@ -922,8 +922,8 @@ class MainActivity : Activity() {
                         .put("kg", kg).put("reps", count)
                         .put("rir", reserve ?: JSONObject.NULL)
                     val sets = draft.optJSONArray("sets") ?: JSONArray()
-                    val previousBest = matchedWeightRepRecords()
-                        [set.optString("exercise")]?.get(matchedWeightKey(kg))
+                    val previousBest = matchedWeightRepRecords()[set.optString("exercise")]
+                        ?.get(matchedWeightKey(kg))
                     sets.put(set)
                     draft.put("sets", sets)
                     if (previousBest == null || count > previousBest) {
