@@ -259,27 +259,13 @@ class MainActivity : Activity() {
             (age - lower.first).toDouble() / (upper.first - lower.first)
     }
 
-    private fun renderDashboard() {
-        if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
-        dashboardCards.removeAllViews()
-        dashboardCards.addView(Button(this).apply {
-            text = "🏆 View personal records"
-            setOnClickListener { showTrophyCabinet() }
-        })
-        dashboardCards.addView(Button(this).apply {
-            val current = getSharedPreferences("ui_settings", MODE_PRIVATE).getString("bodyweight_kg", null)
-            text = if (current == null) "Set bodyweight for milestones"
-                else "Bodyweight: $current kg · Edit"
-            setOnClickListener { editBodyweight() }
-        })
-        dashboardCards.addView(TextView(this).apply {
-            text = "Milestones compare estimated PB to bodyweight; they are personal markers, not population rankings."
-            textSize = 12f
-            setPadding(0, dp(5), 0, dp(12))
-            setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
-        })
+    private fun showStrengthReferenceSettings() {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+        }
         val sexPrefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
-        dashboardCards.addView(TextView(this).apply {
+        content.addView(TextView(this).apply {
             text = "Strength Level comparison (optional; sex-specific community data)"
             textSize = 13f
             setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
@@ -302,8 +288,8 @@ class MainActivity : Activity() {
                 }
             }
         }
-        dashboardCards.addView(sexPicker)
-        dashboardCards.addView(TextView(this).apply {
+        content.addView(sexPicker)
+        content.addView(TextView(this).apply {
             text = "Age (optional; 15–90, approximate adjustment)"
             textSize = 13f
             setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
@@ -314,8 +300,8 @@ class MainActivity : Activity() {
             setSingleLine(true)
             setText(sexPrefs.getString("strength_age", "") ?: "")
         }
-        dashboardCards.addView(ageInput)
-        dashboardCards.addView(Button(this).apply {
+        content.addView(ageInput)
+        content.addView(Button(this).apply {
             text = "Apply age to strength standards"
             setOnClickListener {
                 val value = ageInput.text.toString().trim()
@@ -327,6 +313,37 @@ class MainActivity : Activity() {
                     renderDashboard()
                 }
             }
+        })
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Strength reference settings")
+            .setView(content)
+            .setPositiveButton("Done", null)
+            .show()
+    }
+
+    private fun renderDashboard() {
+        if (!::dashboardCards.isInitialized || !::exercise.isInitialized) return
+        dashboardCards.removeAllViews()
+        dashboardCards.addView(Button(this).apply {
+            text = "🏆 View personal records"
+            setOnClickListener { showTrophyCabinet() }
+        })
+        dashboardCards.addView(Button(this).apply {
+            val current = getSharedPreferences("ui_settings", MODE_PRIVATE).getString("bodyweight_kg", null)
+            text = if (current == null) "Set bodyweight for milestones"
+                else "Bodyweight: $current kg · Edit"
+            setOnClickListener { editBodyweight() }
+        })
+        dashboardCards.addView(TextView(this).apply {
+            text = "Milestones compare estimated PB to bodyweight; they are personal markers, not population rankings."
+            textSize = 12f
+            setPadding(0, dp(5), 0, dp(12))
+            setTextColor(if (darkMode) Color.WHITE else Color.rgb(27, 42, 60))
+        })
+        val sexPrefs = getSharedPreferences("ui_settings", MODE_PRIVATE)
+        dashboardCards.addView(Button(this).apply {
+            text = "Strength reference settings"
+            setOnClickListener { showStrengthReferenceSettings() }
         })
         val all = records()
         for (name in chosenLifts()) {
@@ -950,10 +967,15 @@ class MainActivity : Activity() {
                 showHistory()
             }
         })
-        history = TextView(this).apply { textSize = 17f; setPadding(0, 24, 0, 16) }
+        history = TextView(this).apply { textSize = 15f; setLineSpacing(dp(3).toFloat(), 1.08f); setPadding(dp(14), dp(16), dp(14), dp(16)); background = rounded(if (darkMode) Color.rgb(28, 37, 48) else Color.WHITE, 12) }
         historyPage.addView(history)
         chart = ProgressChart(this)
-        historyPage.addView(chart)
+        historyPage.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(10), dp(8), dp(10))
+            background = rounded(if (darkMode) Color.rgb(28, 37, 48) else Color.WHITE, 12)
+            addView(chart)
+        })
         settingsPage.addView(TextView(this).apply { text = "WIDGET EXERCISE"; textSize = 18f })
         widgetExercise = Spinner(this)
         widgetExercise.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
@@ -1047,7 +1069,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.3 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.4 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
@@ -1140,7 +1162,12 @@ class MainActivity : Activity() {
         val actualLabel = if (actuals.isEmpty()) "No tested 1RM saved"
             else "Tested 1RM personal best: " + format(actuals.maxOrNull() ?: 0.0)
         renderDashboard()
-        history.text = "STRENGTH DASHBOARD — $selected\n\n" + strengthInsight(selected, all) + "\n\n$estimateLabel\n$recentChange\n\n$actualLabel$testedChange\n\nEstimated 1RM progression:"
+        history.text = "STRENGTH SUMMARY  /  " + selected.uppercase(Locale.UK) +
+            "\n\n" + strengthInsight(selected, all) +
+            "\n\nESTIMATED 1RM\n" + estimateLabel + "\n" + recentChange +
+            "\n\nTESTED 1RM\n" + actualLabel + testedChange +
+            "\n\nPROGRESSION  /  ESTIMATED 1RM"
+
     }
 
 
