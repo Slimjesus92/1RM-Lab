@@ -35,12 +35,12 @@ class ProgressChart(context: Context) : View(context) {
         return true
     }
     override fun performClick(): Boolean { super.performClick(); return true }
-    private val accent get() = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(30, 110, 195)
-    private val labelColor get() = if (darkMode) Color.WHITE else Color.DKGRAY
-    private val gridColor get() = if (darkMode) Color.rgb(70, 84, 100) else Color.LTGRAY
+    private val accent get() = if (darkMode) Color.rgb(125, 176, 198) else Color.rgb(42, 92, 128)
+    private val labelColor get() = if (darkMode) Color.rgb(195, 207, 218) else Color.rgb(78, 91, 104)
+    private val gridColor get() = if (darkMode) Color.rgb(53, 65, 78) else Color.rgb(223, 230, 235)
     private val density get() = resources.displayMetrics.density
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), (240 * density).toInt())
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), (220 * density).toInt())
     }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -82,11 +82,13 @@ class ProgressChart(context: Context) : View(context) {
         }
         hitPositions = positions
         paint.color = accent
-        paint.strokeWidth = 2.5f * density
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.strokeWidth = 2f * density
         for (i in 1 until positions.size) {
             canvas.drawLine(positions[i - 1].first, positions[i - 1].second, positions[i].first, positions[i].second, paint)
         }
-        for ((i, pos) in positions.withIndex()) canvas.drawCircle(pos.first, pos.second, (if (i == selectedIndex) 7f else 3.5f) * density, paint)
+        for ((i, pos) in positions.withIndex()) canvas.drawCircle(pos.first, pos.second, (if (i == selectedIndex) 6f else 3f) * density, paint)
         paint.color = labelColor
         paint.textSize = 10f * resources.displayMetrics.scaledDensity
         val dateFormat = SimpleDateFormat(if (lastTime - firstTime < 86400000L) "dd MMM HH:mm" else "dd MMM", Locale.UK)
