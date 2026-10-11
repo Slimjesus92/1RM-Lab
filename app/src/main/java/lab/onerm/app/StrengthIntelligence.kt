@@ -45,15 +45,28 @@ object StrengthIntelligence {
             estimate < priorEstimate * 0.985 -> "Performance below previous session"
             else -> "Performance broadly stable"
         }
+        val liftStep = when (exercise) {
+            "Squat", "Deadlift" -> 5.0
+            else -> 2.5
+        }
+        val estimates = workouts.mapNotNull { session ->
+            session.maxOfOrNull { it.optDouble("kg") * (1 + it.optInt("reps") / 30.0) }
+        }
+        val stalled = estimates.size >= 3 &&
+            estimates.maxOrNull()!! <= estimates.minOrNull()!! * 1.015
+        val repeatedDrop = estimates.size >= 3 &&
+            estimates[0] < estimates[1] * 0.985 && estimates[1] < estimates[2] * 0.985
         val consistent = workouts.size >= 2 && prior != null &&
             prior.optDouble("kg") >= kg * 0.98 &&
             prior.optInt("reps") >= reps &&
             (!prior.has("rir") || prior.isNull("rir") || prior.optInt("rir") >= 2)
-        val increase = hasRir && rir >= 3 && consistent && reps in 3..12
-        val target = if (increase) round((kg + 2.5) / 2.5) * 2.5 else kg
+        val increase = hasRir && rir >= 3 && consistent && !repeatedDrop && reps in 3..12
+        val target = if (increase) round((kg + liftStep) / 2.5) * 2.5 else kg
         val reason = when {
             !hasRir -> "RIR wasn't logged for the reference set; hold weight until effort is clearer."
-            increase -> "Two comparable sessions and at least 3 reps in reserve support a cautious 2.5 kg increase."
+            repeatedDrop -> "Performance fell across three sessions. Hold the load and review recovery and technique."
+            increase -> "Two comparable sessions and at least 3 RIR support a cautious " + liftStep.toInt() + " kg increase."
+            stalled -> "Performance has been similar across three sessions. Hold the load and aim to add a rep."
             rir <= 1 -> "Last set was close to failure; repeat the load before increasing."
             workouts.size < 2 -> "Only one session available; establish a repeatable baseline first."
             else -> "Maintain this weight and build consistent reps with around 2 RIR."
