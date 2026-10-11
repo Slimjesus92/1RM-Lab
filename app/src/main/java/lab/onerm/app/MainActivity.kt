@@ -1211,6 +1211,27 @@ class MainActivity : Activity() {
             .setPositiveButton("Done", null))
     }
 
+    private fun showStrengthForecast() {
+        val all = completedWorkouts()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        for (lift in exerciseNames.filter { it != "Other" }) {
+            val result = StrengthForecast.calculate(all, lift)
+            content.addView(workoutText(lift.uppercase(Locale.UK), 15f))
+            content.addView(workoutText(if (result == null)
+                "Not enough evidence yet. Log at least four sessions spanning 21 days with working sets of 1–10 reps."
+            else String.format(Locale.UK,
+                "Current session-best estimate: %.1f kg\n4-week trend projection: %.1f kg\nExploratory range: %.1f–%.1f kg\n%d sessions analysed\n%s",
+                result.current, result.projected, result.low, result.high, result.sessions, result.explanation), 13f))
+        }
+        polishedDialog(android.app.AlertDialog.Builder(this)
+            .setTitle("Strength forecast · experimental")
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton("Done", null))
+    }
+
     private fun showWorkoutInsights() {
         val all = completedWorkouts()
         val sessions = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
@@ -1234,6 +1255,10 @@ class MainActivity : Activity() {
                 String.format(Locale.UK, "%.0f kg volume", volume) +
                 " · max reps " + bestReps + " · heaviest " +
                 String.format(Locale.UK, "%.1f kg", heaviest)
+        }
+        val forecastButton = Button(this).apply {
+            text = "Explore 4-week strength forecast"
+            setOnClickListener { showStrengthForecast() }
         }
         polishedDialog(android.app.AlertDialog.Builder(this)
             .setTitle("Training insights · last 30 days")
