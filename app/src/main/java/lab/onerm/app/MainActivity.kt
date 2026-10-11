@@ -608,6 +608,77 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun showActivityCalendar() {
+        val all = records()
+        val today = java.time.LocalDate.now()
+        val days = (0 until all.length()).mapNotNull { all.optJSONObject(it) }
+            .mapNotNull {
+                val stamp = it.optLong("date", -1L)
+                if (stamp <= 0L || stamp > System.currentTimeMillis()) null
+                else java.time.Instant.ofEpochMilli(stamp)
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            }.toSet()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+        }
+        val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
+        val active = Color.rgb(216, 169, 79)
+        for (offset in 2 downTo 0) {
+            val month = today.withDayOfMonth(1).minusMonths(offset.toLong())
+            val monthDays = month.lengthOfMonth()
+            val logged = (1..monthDays).count { month.withDayOfMonth(it) in days }
+            content.addView(TextView(this).apply {
+                text = month.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.UK) +
+                    " " + month.year + " · " + logged + " days with saved lifts"
+                textSize = 16f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(foreground)
+                setPadding(0, dp(10), 0, dp(6))
+            })
+            val headers = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for (name in listOf("M", "T", "W", "T", "F", "S", "S")) {
+                headers.addView(TextView(this).apply {
+                    text = name; textSize = 12f; gravity = android.view.Gravity.CENTER
+                    setTextColor(foreground)
+                }, LinearLayout.LayoutParams(0, dp(28), 1f))
+            }
+            content.addView(headers)
+            val firstOffset = month.dayOfWeek.value - 1
+            val weeks = (firstOffset + monthDays + 6) / 7
+            for (week in 0 until weeks) {
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                for (weekday in 0..6) {
+                    val number = week * 7 + weekday - firstOffset + 1
+                    val date = if (number in 1..monthDays) month.withDayOfMonth(number) else null
+                    val recorded = date != null && date in days
+                    val cell = TextView(this).apply {
+                        text = date?.dayOfMonth?.toString() ?: ""
+                        gravity = android.view.Gravity.CENTER
+                        textSize = 13f
+                        setTextColor(if (recorded) Color.BLACK else foreground)
+                        if (recorded) background = rounded(active, 10)
+                    }
+                    row.addView(cell, LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                        setMargins(dp(2), dp(2), dp(2), dp(2))
+                    })
+                }
+                content.addView(row)
+            }
+        }
+        content.addView(TextView(this).apply {
+            text = "Gold = at least one saved estimated or tested 1RM that day. This is a logging calendar, not a complete workout attendance record."
+            textSize = 12f
+            setTextColor(foreground)
+            setPadding(0, dp(12), 0, dp(4))
+        })
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Training activity calendar")
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton("Done", null)
+            .show()
+    }
+
     private fun applyTheme(view: View) {
         val foreground = if (darkMode) Color.WHITE else Color.rgb(27, 42, 60)
         val accent = if (darkMode) Color.rgb(42, 184, 255) else Color.rgb(36, 101, 175)
@@ -702,6 +773,10 @@ class MainActivity : Activity() {
         calculator.addView(title("Log a lift"))
         calculator.addView(TextView(this).apply { text = "1. Select a lift   2. Enter a set   3. Save your session"; textSize = 14f })
         historyPage.addView(title("Training history"))
+        historyPage.addView(Button(this).apply {
+            text = "View training activity calendar"
+            setOnClickListener { showActivityCalendar() }
+        })
         settingsPage.addView(title("Settings"))
         settingsPage.addView(TextView(this).apply { text = "DATA BACKUP"; textSize = 18f })
         settingsPage.addView(Button(this).apply { text = "Export history"; setOnClickListener { exportHistory() } })
@@ -852,7 +927,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.0 · Theme choice is saved automatically." })
+        settingsPage.addView(TextView(this).apply { text = "1RM Lab v2.1 · Theme choice is saved automatically." })
         applyTheme(root)
         dashboardCards.let { container ->
             for (i in 0 until container.childCount) {
