@@ -829,10 +829,8 @@ class MainActivity : Activity() {
     private fun muscleMapPanel(name: String): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(MuscleMapView(this@MainActivity).apply {
-                exerciseName = name
-                dark = darkMode
-            }, LinearLayout.LayoutParams(-1, dp(260)))
+            addView(AnatomyWebView(this@MainActivity, name, darkMode),
+                LinearLayout.LayoutParams(-1, dp(350)))
             val legend = LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 setPadding(dp(12), dp(4), dp(12), dp(8))
@@ -854,6 +852,7 @@ class MainActivity : Activity() {
             }
             addView(legend)
             addView(workoutText(MuscleMapView.description(name), 13f))
+            addView(workoutText("Anatomical artwork: Ryan Graves (CC BY 4.0). Highlighting adapted for 1RM Lab. https://creativecommons.org/licenses/by/4.0/", 11f))
         }
 
     private fun showMuscleMap(name: String) {
